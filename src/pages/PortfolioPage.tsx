@@ -27,20 +27,83 @@ const PortfolioPage = () => {
   const [ticker, setTicker] = useState('');
   const [assetType, setAssetType] = useState<'crypto' | 'stock' | 'etf'>('crypto');
   const [amountInvested, setAmountInvested] = useState('');
-  const [units, setUnits] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [invCurrency, setInvCurrency] = useState<Currency>(displayCurrency);
+  const [lookupPrice, setLookupPrice] = useState<number | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+
+  // Auto-fetch price when ticker changes
+  useEffect(() => {
+    if (!ticker || ticker.length < 2) {
+      setLookupPrice(null);
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      setLookupLoading(true);
+      try {
+        const tickerLower = ticker.toLowerCase();
+        const TICKER_MAP: Record<string, string> = {
+          btc: 'bitcoin', eth: 'ethereum', sol: 'solana', bnb: 'binancecoin',
+          xrp: 'ripple', ada: 'cardano', doge: 'dogecoin', dot: 'polkadot',
+          avax: 'avalanche-2', matic: 'matic-network', link: 'chainlink',
+          ltc: 'litecoin', uni: 'uniswap', atom: 'cosmos', near: 'near',
+          sui: 'sui', ton: 'the-open-network', usdt: 'tether', usdc: 'usd-coin',
+        };
+
+        if (assetType === 'crypto') {
+          const coinId = TICKER_MAP[tickerLower] || tickerLower;
+          const res = await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`,
+            { signal: controller.signal }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setLookupPrice(data[coinId]?.usd ?? null);
+          }
+        } else {
+          const res = await fetch(
+            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker.toUpperCase()}&apikey=Z3SJ7YFJI0U9K2WS`,
+            { signal: controller.signal }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const price = parseFloat(data['Global Quote']?.['05. price'] || '0');
+            setLookupPrice(price > 0 ? price : null);
+          }
+        }
+      } catch (e: any) {
+        if (e.name !== 'AbortError') setLookupPrice(null);
+      } finally {
+        setLookupLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [ticker, assetType]);
+
+  // Calculate units from amount and price (price is in USD, convert invested amount to USD first)
+  const calculatedUnits = useMemo(() => {
+    const amount = parseFloat(amountInvested);
+    if (!amount || !lookupPrice || lookupPrice <= 0) return null;
+    // Convert invested amount to USD for division
+    const amountUSD = invCurrency === 'USD' ? amount : convertAmount(amount, invCurrency, 'USD', ratesData?.rates);
+    return amountUSD / lookupPrice;
+  }, [amountInvested, lookupPrice, invCurrency, ratesData]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assetName || !ticker || !amountInvested || !units) return;
+    if (!assetName || !ticker || !amountInvested || !calculatedUnits) return;
     try {
       await addInvestment.mutateAsync({
         asset_name: assetName,
         ticker: ticker.toUpperCase(),
         asset_type: assetType,
         amount_invested: parseFloat(amountInvested),
-        units: parseFloat(units),
+        units: calculatedUnits,
         purchase_date: purchaseDate,
         currency: invCurrency,
       });
@@ -57,9 +120,9 @@ const PortfolioPage = () => {
     setTicker('');
     setAssetType('crypto');
     setAmountInvested('');
-    setUnits('');
     setPurchaseDate(format(new Date(), 'yyyy-MM-dd'));
     setInvCurrency(displayCurrency);
+    setLookupPrice(null);
   };
 
   const portfolio = (investments || []).map((inv) => {
