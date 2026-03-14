@@ -357,16 +357,30 @@ const PortfolioPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Input
-              type="number"
-              step="0.00000001"
-              min="0"
-              placeholder="Units / shares purchased"
-              value={units}
-              onChange={(e) => setUnits(e.target.value)}
-              className="border-border bg-background text-foreground placeholder:text-muted-foreground"
-              required
-            />
+
+            {/* Auto-calculated units preview */}
+            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+              {lookupLoading ? (
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4 rounded-full bg-muted/40" />
+                  <span className="text-xs text-muted-foreground">Fetching price for {ticker}...</span>
+                </div>
+              ) : lookupPrice && calculatedUnits ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Current price: <span className="font-mono-finance text-foreground">${lookupPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
+                  </p>
+                  <p className="text-sm font-medium text-primary font-mono-finance">
+                    ≈ {calculatedUnits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} {ticker.toUpperCase()} at current price
+                  </p>
+                </>
+              ) : ticker.length >= 2 && !lookupLoading ? (
+                <p className="text-xs text-muted-foreground">Enter an amount to see calculated units</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Enter a ticker to fetch live price</p>
+              )}
+            </div>
+
             <Input
               type="date"
               value={purchaseDate}
@@ -375,7 +389,7 @@ const PortfolioPage = () => {
             />
             <Button
               type="submit"
-              disabled={addInvestment.isPending}
+              disabled={addInvestment.isPending || !calculatedUnits}
               className="w-full bg-primary text-primary-foreground font-bold hover:bg-gold-glow active:scale-95 transition-all"
             >
               {addInvestment.isPending ? 'Adding...' : 'Add Investment'}
