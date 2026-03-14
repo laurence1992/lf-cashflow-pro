@@ -39,6 +39,7 @@ const ProtectedRoutes = () => {
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
