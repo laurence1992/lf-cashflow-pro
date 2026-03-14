@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { useCategories, useAddCategory } from '@/hooks/useCategories';
 import { useProfile, Currency } from '@/hooks/useProfile';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { Mic, MicOff } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -16,6 +17,77 @@ interface Props {
 }
 
 const OTHER_SENTINEL = '__other__';
+
+// Map spoken currency words to codes
+const CURRENCY_WORDS: Record<string, Currency> = {
+  euro: 'EUR', euros: 'EUR', eur: 'EUR', '€': 'EUR',
+  dollar: 'USD', dollars: 'USD', usd: 'USD', '$': 'USD', buck: 'USD', bucks: 'USD',
+  yuan: 'CNY', cny: 'CNY', renminbi: 'CNY', rmb: 'CNY', '¥': 'CNY',
+};
+
+// Map spoken category words to category names
+const CATEGORY_WORDS: Record<string, string> = {
+  food: 'Food', eat: 'Food', eating: 'Food', lunch: 'Food', dinner: 'Food', breakfast: 'Food', meal: 'Food',
+  groceries: 'Food', grocery: 'Food',
+  transport: 'Transport', taxi: 'Transport', uber: 'Transport', bus: 'Transport', train: 'Transport', gas: 'Transport', fuel: 'Transport', petrol: 'Transport',
+  shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping',
+  entertainment: 'Entertainment', movie: 'Entertainment', movies: 'Entertainment', cinema: 'Entertainment', game: 'Entertainment', games: 'Entertainment',
+  health: 'Health', doctor: 'Health', medicine: 'Health', pharmacy: 'Health', hospital: 'Health',
+  bills: 'Bills', bill: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
+  salary: 'Salary', pay: 'Salary', wage: 'Salary', income: 'Salary',
+  rent: 'Bills', housing: 'Bills',
+  gift: 'Gift', gifts: 'Gift', present: 'Gift',
+  travel: 'Transport', flight: 'Transport', hotel: 'Transport',
+};
+
+function parseSpeech(text: string, categories: Array<{ id: string; name: string }> | undefined) {
+  const lower = text.toLowerCase().trim();
+  const words = lower.split(/\s+/);
+
+  // Extract amount (first number found)
+  const numMatch = lower.match(/(\d+(?:[.,]\d+)?)/);
+  const amount = numMatch ? numMatch[1].replace(',', '.') : null;
+
+  // Extract currency
+  let currency: Currency | null = null;
+  for (const word of words) {
+    if (CURRENCY_WORDS[word]) {
+      currency = CURRENCY_WORDS[word];
+      break;
+    }
+  }
+
+  // Extract category — first try matching against actual user categories
+  let categoryId: string | null = null;
+  let categoryName: string | null = null;
+
+  if (categories) {
+    for (const cat of categories) {
+      if (lower.includes(cat.name.toLowerCase())) {
+        categoryId = cat.id;
+        categoryName = cat.name;
+        break;
+      }
+    }
+  }
+
+  // Fallback to keyword mapping
+  if (!categoryId && categories) {
+    for (const word of words) {
+      const mapped = CATEGORY_WORDS[word];
+      if (mapped) {
+        const found = categories.find((c) => c.name.toLowerCase() === mapped.toLowerCase());
+        if (found) {
+          categoryId = found.id;
+          categoryName = found.name;
+          break;
+        }
+      }
+    }
+  }
+
+  return { amount, currency, categoryId, categoryName };
+}
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const { data: profile } = useProfile();
@@ -32,6 +104,11 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
+  // Voice state
+  const [isListening, setIsListening] = useState(false);
+  const [speechText, setSpeechText] = useState<string | null>(null);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
   const addCategory = useAddCategory();
@@ -47,6 +124,71 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     }
   };
 
+  const handleVoiceInput = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Speech recognition is not supported in this browser');
+      return;
+    }
+
+    if (isListening) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    setIsListening(true);
+    setSpeechText(null);
+    setSpeechError(null);
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      const confidence = event.results[0][0].confidence;
+      setSpeechText(transcript);
+
+      if (confidence < 0.4) {
+        setSpeechError("Didn't catch that, try again");
+        setIsListening(false);
+        return;
+      }
+
+      // Parse and fill form
+      const parsed = parseSpeech(transcript, categories);
+
+      if (parsed.amount) setAmount(parsed.amount);
+      if (parsed.currency) setTxCurrency(parsed.currency);
+      if (parsed.categoryId) {
+        setCategoryId(parsed.categoryId);
+        setIsCreatingCategory(false);
+        setNewCategoryName('');
+      }
+
+      // Check for income keywords
+      const lower = transcript.toLowerCase();
+      if (lower.includes('salary') || lower.includes('income') || lower.includes('pay') || lower.includes('earned')) {
+        setType('income');
+      }
+
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error === 'no-speech') {
+        setSpeechError("Didn't catch that, try again");
+      } else {
+        setSpeechError("Didn't catch that, try again");
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  }, [isListening, categories]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return;
@@ -54,7 +196,6 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     try {
       let finalCategoryId = categoryId;
 
-      // If creating a new category, save it first
       if (isCreatingCategory && newCategoryName.trim()) {
         const newCat = await addCategory.mutateAsync({ name: newCategoryName.trim() });
         finalCategoryId = newCat.id;
@@ -93,6 +234,8 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     setTxCurrency(defaultCurrency);
     setIsCreatingCategory(false);
     setNewCategoryName('');
+    setSpeechText(null);
+    setSpeechError(null);
   };
 
   return (
@@ -101,6 +244,42 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle className="text-foreground">New Transaction</DialogTitle>
         </DialogHeader>
+
+        {/* Voice Input Button */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={handleVoiceInput}
+            className={`flex h-14 w-14 items-center justify-center rounded-full transition-all active:scale-95 ${
+              isListening
+                ? 'bg-primary animate-pulse shadow-[0_0_20px_hsl(var(--primary)/0.5)]'
+                : 'bg-primary hover:bg-gold-glow shadow-[0_0_12px_hsl(var(--primary)/0.3)]'
+            }`}
+          >
+            {isListening ? (
+              <MicOff size={22} className="text-primary-foreground" />
+            ) : (
+              <Mic size={22} className="text-primary-foreground" />
+            )}
+          </button>
+          <p className="text-[11px] text-muted-foreground">
+            {isListening ? 'Listening...' : 'Tap to speak — e.g. "50 euro on food"'}
+          </p>
+
+          {/* Speech result */}
+          {speechText && !speechError && (
+            <div className="w-full rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-center">
+              <p className="text-xs text-muted-foreground mb-0.5">Heard:</p>
+              <p className="text-sm font-medium text-foreground">"{speechText}"</p>
+            </div>
+          )}
+          {speechError && (
+            <div className="w-full rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-center">
+              <p className="text-sm text-destructive">{speechError}</p>
+            </div>
+          )}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type Toggle */}
           <div className="flex gap-2">
@@ -168,7 +347,6 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
             </SelectContent>
           </Select>
 
-          {/* New category name input */}
           {isCreatingCategory && (
             <Input
               placeholder="New category name"
