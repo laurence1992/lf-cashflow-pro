@@ -88,6 +88,7 @@ export type Database = {
           asset_name: string
           asset_type: string
           created_at: string
+          currency: string
           id: string
           purchase_date: string
           ticker: string
@@ -100,6 +101,7 @@ export type Database = {
           asset_name: string
           asset_type: string
           created_at?: string
+          currency?: string
           id?: string
           purchase_date?: string
           ticker: string
@@ -112,6 +114,7 @@ export type Database = {
           asset_name?: string
           asset_type?: string
           created_at?: string
+          currency?: string
           id?: string
           purchase_date?: string
           ticker?: string
@@ -186,6 +189,7 @@ export type Database = {
           amount: number
           category_id: string | null
           created_at: string
+          currency: string
           date: string
           id: string
           is_recurring: boolean
@@ -200,6 +204,7 @@ export type Database = {
           amount: number
           category_id?: string | null
           created_at?: string
+          currency?: string
           date?: string
           id?: string
           is_recurring?: boolean
@@ -214,6 +219,7 @@ export type Database = {
           amount?: number
           category_id?: string | null
           created_at?: string
+          currency?: string
           date?: string
           id?: string
           is_recurring?: boolean
