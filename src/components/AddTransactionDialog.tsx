@@ -28,9 +28,9 @@ const CURRENCY_WORDS: Record<string, Currency> = {
 // Map spoken category words to category names
 const CATEGORY_WORDS: Record<string, string> = {
   food: 'Food', eat: 'Food', eating: 'Food', lunch: 'Food', dinner: 'Food', breakfast: 'Food', meal: 'Food',
-  groceries: 'Food', grocery: 'Food',
+  groceries: 'Food', grocery: 'Food', coffee: 'Food', cafe: 'Food', restaurant: 'Food', snack: 'Food',
   transport: 'Transport', taxi: 'Transport', uber: 'Transport', bus: 'Transport', train: 'Transport', gas: 'Transport', fuel: 'Transport', petrol: 'Transport',
-  shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping',
+  shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping', amazon: 'Shopping',
   entertainment: 'Entertainment', movie: 'Entertainment', movies: 'Entertainment', cinema: 'Entertainment', game: 'Entertainment', games: 'Entertainment',
   health: 'Health', doctor: 'Health', medicine: 'Health', pharmacy: 'Health', hospital: 'Health',
   bills: 'Bills', bill: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
@@ -38,6 +38,9 @@ const CATEGORY_WORDS: Record<string, string> = {
   rent: 'Bills', housing: 'Bills',
   gift: 'Gift', gifts: 'Gift', present: 'Gift',
   travel: 'Transport', flight: 'Transport', hotel: 'Transport',
+  beer: 'Social', drinks: 'Social', bar: 'Social', pub: 'Social', wine: 'Social', cocktail: 'Social',
+  gym: 'Fitness', workout: 'Fitness', exercise: 'Fitness', sport: 'Fitness', sports: 'Fitness',
+  subscription: 'Subscriptions', netflix: 'Subscriptions', spotify: 'Subscriptions',
 };
 
 function parseSpeech(text: string, categories: Array<{ id: string; name: string }> | undefined) {
@@ -163,6 +166,9 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
         setIsCreatingCategory(false);
         setNewCategoryName('');
       }
+
+      // Fill note with raw spoken text
+      setNote(transcript);
 
       // Check for income keywords
       const lower = transcript.toLowerCase();
