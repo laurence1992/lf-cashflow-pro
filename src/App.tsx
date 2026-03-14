@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,7 @@ import { useProfile } from "@/hooks/useProfile";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import TransactionsPage from "./pages/TransactionsPage";
 import CalendarPage from "./pages/CalendarPage";
 import GoalsPage from "./pages/GoalsPage";
 import SettingsPage from "./pages/SettingsPage";
