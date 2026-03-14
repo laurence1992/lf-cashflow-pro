@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile, Currency, currencySymbols } from '@/hooks/useProfile';
 import { useCategories, useAddCategory } from '@/hooks/useCategories';
 import { useBudgets, useUpsertBudget } from '@/hooks/useBudgets';
-import { useTransactions } from '@/hooks/useTransactions';
+import { supabase } from '@/integrations/supabase/client';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

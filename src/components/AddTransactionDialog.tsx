@@ -134,11 +134,12 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
             <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
           </div>
           {isRecurring && (
-            <Select value={recurringInterval} onValueChange={(v) => setRecurringInterval(v as 'weekly' | 'monthly')}>
+            <Select value={recurringInterval} onValueChange={(v) => setRecurringInterval(v as 'daily' | 'weekly' | 'monthly')}>
               <SelectTrigger className="border-border bg-background text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
+                <SelectItem value="daily" className="text-foreground">Daily</SelectItem>
                 <SelectItem value="weekly" className="text-foreground">Weekly</SelectItem>
                 <SelectItem value="monthly" className="text-foreground">Monthly</SelectItem>
               </SelectContent>
