@@ -273,14 +273,20 @@ const PortfolioPage = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-foreground font-medium truncate">
-                    {inv.asset_name}
+                    {capitalize(inv.asset_name)}
                     <span className="ml-2 text-xs text-muted-foreground font-mono-finance">{inv.ticker}</span>
                     <span className="ml-1 inline-block rounded bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">
                       {inv.asset_type}
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {Number(inv.units).toLocaleString(undefined, { maximumFractionDigits: 8 })} units · {format(new Date(inv.purchase_date), 'MMM d, yyyy')} · {currencySymbols[inv.invCur]}{Number(inv.amount_invested).toLocaleString('en-US', { minimumFractionDigits: 2 })} invested
+                    {inv.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 8 })} units · {formatAmount(inv.investedDisplay, displayCurrency)} invested
+                  </p>
+                  {!pricesLoading && inv.pricePerUnitDisplay > 0 && (
+                    <p className="text-[10px] text-muted-foreground font-mono-finance mt-0.5">
+                      1 {inv.ticker} = {formatAmount(inv.pricePerUnitDisplay, displayCurrency)}
+                    </p>
+                  )}
                   </p>
                 </div>
               </div>
