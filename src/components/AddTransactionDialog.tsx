@@ -21,7 +21,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isRecurring, setIsRecurring] = useState(false);
-  const [recurringInterval, setRecurringInterval] = useState<'weekly' | 'monthly'>('monthly');
+  const [recurringInterval, setRecurringInterval] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
 
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
