@@ -8,6 +8,7 @@ import MonthlyBarChart from '@/components/charts/MonthlyBarChart';
 import SpendingTrendChart from '@/components/charts/SpendingTrendChart';
 import RecentTransactions from '@/components/RecentTransactions';
 import BudgetOverview from '@/components/BudgetOverview';
+import MonthlyBreakdown from '@/components/MonthlyBreakdown';
 
 const containerVariants = {
   hidden: { opacity: 0 },
