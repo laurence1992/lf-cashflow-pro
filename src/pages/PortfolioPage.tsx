@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useInvestments, useAddInvestment, useDeleteInvestment } from '@/hooks/useInvestments';
 import { useProfile, formatAmount, Currency, currencySymbols } from '@/hooks/useProfile';
