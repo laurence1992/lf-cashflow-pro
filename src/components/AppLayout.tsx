@@ -1,12 +1,13 @@
 import { ReactNode } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Home, CalendarDays, Target, Settings, Plus, LogOut } from 'lucide-react';
+import { Home, CalendarDays, Target, Settings, Plus, LogOut, ArrowLeftRight } from 'lucide-react';
 import { useState } from 'react';
 import AddTransactionDialog from './AddTransactionDialog';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
+  { path: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { path: '/calendar', label: 'Calendar', icon: CalendarDays },
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/settings', label: 'Settings', icon: Settings },
