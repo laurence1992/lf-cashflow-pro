@@ -150,24 +150,7 @@ const SettingsPage = () => {
         )}
       </div>
 
-      {/* Monthly Breakdown */}
-      <div className="surface-card rounded-lg p-6 space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">Monthly Breakdown</h3>
-        <div className="space-y-2">
-          {monthlyBreakdown.map((m) => (
-            <div key={m.label} className="flex items-center justify-between rounded-md p-3 bg-accent/30">
-              <span className="text-sm text-foreground">{m.label}</span>
-              <div className="flex gap-4 text-xs font-mono-finance">
-                <span className="text-primary">+{formatAmount(m.income, currency)}</span>
-                <span className="text-foreground">-{formatAmount(m.expenses, currency)}</span>
-                <span className={m.net >= 0 ? 'text-primary' : 'text-destructive'}>
-                  {m.net >= 0 ? '+' : ''}{formatAmount(m.net, currency)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* Account */}
       <div className="surface-card rounded-lg p-6 space-y-3">
