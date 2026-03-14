@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useAddTransaction } from '@/hooks/useTransactions';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories, useAddCategory } from '@/hooks/useCategories';
 import { useProfile, Currency } from '@/hooks/useProfile';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -14,6 +14,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const OTHER_SENTINEL = '__other__';
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const { data: profile } = useProfile();
@@ -27,19 +29,46 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringInterval, setRecurringInterval] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const [txCurrency, setTxCurrency] = useState<Currency>(defaultCurrency);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
+  const addCategory = useAddCategory();
+
+  const handleCategoryChange = (value: string) => {
+    if (value === OTHER_SENTINEL) {
+      setIsCreatingCategory(true);
+      setCategoryId('');
+    } else {
+      setIsCreatingCategory(false);
+      setNewCategoryName('');
+      setCategoryId(value);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !categoryId) return;
+    if (!amount) return;
 
     try {
+      let finalCategoryId = categoryId;
+
+      // If creating a new category, save it first
+      if (isCreatingCategory && newCategoryName.trim()) {
+        const newCat = await addCategory.mutateAsync({ name: newCategoryName.trim() });
+        finalCategoryId = newCat.id;
+      }
+
+      if (!finalCategoryId) {
+        toast.error('Please select or create a category');
+        return;
+      }
+
       await addTransaction.mutateAsync({
         amount: parseFloat(amount),
         type,
-        category_id: categoryId,
+        category_id: finalCategoryId,
         note: note || undefined,
         date,
         is_recurring: isRecurring,
@@ -62,6 +91,8 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     setIsRecurring(false);
     setType('expense');
     setTxCurrency(defaultCurrency);
+    setIsCreatingCategory(false);
+    setNewCategoryName('');
   };
 
   return (
@@ -118,7 +149,10 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
           </div>
 
           {/* Category */}
-          <Select value={categoryId} onValueChange={setCategoryId} required>
+          <Select
+            value={isCreatingCategory ? OTHER_SENTINEL : categoryId}
+            onValueChange={handleCategoryChange}
+          >
             <SelectTrigger className="border-border bg-background text-foreground">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -128,8 +162,23 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
                   {cat.name}
                 </SelectItem>
               ))}
+              <SelectItem value={OTHER_SENTINEL} className="text-primary font-medium">
+                + Create new category...
+              </SelectItem>
             </SelectContent>
           </Select>
+
+          {/* New category name input */}
+          {isCreatingCategory && (
+            <Input
+              placeholder="New category name"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              className="border-primary/50 bg-background text-foreground placeholder:text-muted-foreground"
+              autoFocus
+              required
+            />
+          )}
 
           {/* Note */}
           <Input
@@ -167,10 +216,10 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
 
           <Button
             type="submit"
-            disabled={addTransaction.isPending}
+            disabled={addTransaction.isPending || addCategory.isPending}
             className="w-full bg-primary text-primary-foreground font-bold hover:bg-gold-glow active:scale-95 transition-all"
           >
-            {addTransaction.isPending ? 'Saving...' : 'Save Transaction'}
+            {addTransaction.isPending || addCategory.isPending ? 'Saving...' : 'Save Transaction'}
           </Button>
         </form>
       </DialogContent>
