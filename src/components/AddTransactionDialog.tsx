@@ -167,6 +167,9 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
         setNewCategoryName('');
       }
 
+      // Fill note with raw spoken text
+      setNote(transcript);
+
       // Check for income keywords
       const lower = transcript.toLowerCase();
       if (lower.includes('salary') || lower.includes('income') || lower.includes('pay') || lower.includes('earned')) {
