@@ -1,24 +1,20 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile, Currency, currencySymbols } from '@/hooks/useProfile';
+import { useProfile, Currency } from '@/hooks/useProfile';
 import { useCategories, useAddCategory } from '@/hooks/useCategories';
 import { useBudgets, useUpsertBudget } from '@/hooks/useBudgets';
-import { supabase } from '@/integrations/supabase/client';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { formatAmount } from '@/hooks/useProfile';
 
 const SettingsPage = () => {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: categories } = useCategories();
-  const { data: transactions } = useTransactions();
   const { data: budgets } = useBudgets();
   const addCategory = useAddCategory();
   const upsertBudget = useUpsertBudget();
