@@ -173,15 +173,17 @@ const PortfolioPage = () => {
                   <p className={`font-mono-finance text-sm font-medium ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {pricesLoading ? '...' : formatAmount(inv.currentValue, displayCurrency)}
                   </p>
-                  <div className="flex items-center gap-2 justify-end">
-                    <span className={`text-xs font-mono-finance ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {pricesLoading ? '' : `${inv.gainLoss >= 0 ? '+' : ''}${inv.gainLossPercent.toFixed(2)}%`}
-                    </span>
-                    {inv.change24h !== null && !pricesLoading && (
-                      <span className={`text-[10px] font-mono-finance px-1 rounded ${inv.change24h >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                        24h {inv.change24h >= 0 ? '+' : ''}{inv.change24h.toFixed(2)}%
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 justify-end">
+                     <span className={`text-xs font-mono-finance ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                       {pricesLoading ? '' : `${inv.gainLoss >= 0 ? '+' : ''}${inv.gainLossPercent.toFixed(2)}%`}
+                     </span>
+                     {!pricesLoading && (
+                       <span className={`text-[10px] font-mono-finance px-1 rounded ${
+                         (inv.change24h ?? 0) >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
+                       }`}>
+                         24h {(inv.change24h ?? 0) >= 0 ? '+' : ''}{(inv.change24h ?? 0).toFixed(2)}%
+                       </span>
+                     )}
                   </div>
                 </div>
                 <button
