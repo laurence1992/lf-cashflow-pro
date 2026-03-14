@@ -21,6 +21,11 @@ function getCategoryIcon(name: string | undefined): string {
   return CATEGORY_ICONS[name] || name.charAt(0).toUpperCase();
 }
 
+function capitalize(str: string | undefined | null): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 const TransactionsPage = () => {
   const { data: transactions } = useTransactions();
   const { data: profile } = useProfile();
@@ -153,7 +158,7 @@ const TransactionsPage = () => {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-foreground font-medium truncate">
-                        {t.note || catName}
+                        {capitalize(t.note) || capitalize(catName)}
                       </p>
                       {t.is_recurring && (
                         <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary font-medium">
@@ -166,7 +171,7 @@ const TransactionsPage = () => {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {catName} · {format(new Date(t.date), 'MMM d, yyyy')}
+                      {capitalize(catName)} · {format(new Date(t.date), 'MMM d, yyyy')}
                     </p>
                   </div>
                 </div>
