@@ -287,7 +287,6 @@ const PortfolioPage = () => {
                       1 {inv.ticker} = {formatAmount(inv.pricePerUnitDisplay, displayCurrency)}
                     </p>
                   )}
-                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
