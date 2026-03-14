@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import TransactionsPage from "./pages/TransactionsPage";
 import CalendarPage from "./pages/CalendarPage";
 import GoalsPage from "./pages/GoalsPage";
+import PortfolioPage from "./pages/PortfolioPage";
 import SettingsPage from "./pages/SettingsPage";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
@@ -38,6 +39,7 @@ const ProtectedRoutes = () => {
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

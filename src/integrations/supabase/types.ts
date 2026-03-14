@@ -82,6 +82,45 @@ export type Database = {
         }
         Relationships: []
       }
+      investments: {
+        Row: {
+          amount_invested: number
+          asset_name: string
+          asset_type: string
+          created_at: string
+          id: string
+          purchase_date: string
+          ticker: string
+          units: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_invested: number
+          asset_name: string
+          asset_type: string
+          created_at?: string
+          id?: string
+          purchase_date?: string
+          ticker: string
+          units: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_invested?: number
+          asset_name?: string
+          asset_type?: string
+          created_at?: string
+          id?: string
+          purchase_date?: string
+          ticker?: string
+          units?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
