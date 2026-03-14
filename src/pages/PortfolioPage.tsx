@@ -125,20 +125,44 @@ const PortfolioPage = () => {
     setLookupPrice(null);
   };
 
-  const portfolio = (investments || []).map((inv) => {
+  // Deduplicate by ticker (merge investments with same ticker)
+  const deduped = useMemo(() => {
+    if (!investments) return [];
+    const map = new Map<string, typeof investments[number] & { totalUnits: number; totalInvested: number }>();
+    for (const inv of investments) {
+      const key = inv.ticker.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.totalUnits += Number(inv.units);
+        const invCur = ((inv as any).currency as Currency) || 'USD';
+        existing.totalInvested += convertAmount(Number(inv.amount_invested), invCur, displayCurrency, ratesData?.rates);
+      } else {
+        const invCur = ((inv as any).currency as Currency) || 'USD';
+        map.set(key, {
+          ...inv,
+          totalUnits: Number(inv.units),
+          totalInvested: convertAmount(Number(inv.amount_invested), invCur, displayCurrency, ratesData?.rates),
+        });
+      }
+    }
+    return [...map.values()];
+  }, [investments, ratesData, displayCurrency]);
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const portfolio = deduped.map((inv) => {
     const priceData = livePrices?.[inv.ticker.toLowerCase()];
     const priceUSD = priceData?.price || 0;
-    const currentValueUSD = priceUSD * Number(inv.units);
+    const currentValueUSD = priceUSD * inv.totalUnits;
     const currentValue = convertAmount(currentValueUSD, 'USD', displayCurrency, ratesData?.rates);
-    const investedOriginal = Number(inv.amount_invested);
-    const invCur = ((inv as any).currency as Currency) || 'USD';
-    const investedDisplay = convertAmount(investedOriginal, invCur, displayCurrency, ratesData?.rates);
+    const investedDisplay = inv.totalInvested;
     const gainLoss = currentValue - investedDisplay;
     const gainLossPercent = investedDisplay > 0 ? (gainLoss / investedDisplay) * 100 : 0;
     const change24h = priceData?.change24h ?? null;
     const isCached = priceData?.cached ?? false;
-    const hasPrice = !!priceData;
-    return { ...inv, currentValue, investedDisplay, gainLoss, gainLossPercent, change24h, invCur, isCached, hasPrice };
+    const pricePerUnitDisplay = convertAmount(priceUSD, 'USD', displayCurrency, ratesData?.rates);
+    const invCur = ((inv as any).currency as Currency) || 'USD';
+    return { ...inv, currentValue, investedDisplay, gainLoss, gainLossPercent, change24h, invCur, isCached, pricePerUnitDisplay };
   });
 
   const totalInvested = portfolio.reduce((s, p) => s + p.investedDisplay, 0);
@@ -249,15 +273,20 @@ const PortfolioPage = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-foreground font-medium truncate">
-                    {inv.asset_name}
+                    {capitalize(inv.asset_name)}
                     <span className="ml-2 text-xs text-muted-foreground font-mono-finance">{inv.ticker}</span>
                     <span className="ml-1 inline-block rounded bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">
                       {inv.asset_type}
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {Number(inv.units).toLocaleString(undefined, { maximumFractionDigits: 8 })} units · {format(new Date(inv.purchase_date), 'MMM d, yyyy')} · {currencySymbols[inv.invCur]}{Number(inv.amount_invested).toLocaleString('en-US', { minimumFractionDigits: 2 })} invested
+                    {inv.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 8 })} units · {formatAmount(inv.investedDisplay, displayCurrency)} invested
                   </p>
+                  {!pricesLoading && inv.pricePerUnitDisplay > 0 && (
+                    <p className="text-[10px] text-muted-foreground font-mono-finance mt-0.5">
+                      1 {inv.ticker} = {formatAmount(inv.pricePerUnitDisplay, displayCurrency)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
