@@ -3,6 +3,24 @@ import { Currency, formatAmount } from '@/hooks/useProfile';
 import { Trash2 } from 'lucide-react';
 import { useDeleteTransaction } from '@/hooks/useTransactions';
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Food: '🍔', Groceries: '🛒', Transport: '🚗', Shopping: '🛍️',
+  Entertainment: '🎬', Health: '💊', Education: '📚', Bills: '📄',
+  Salary: '💰', Freelance: '💻', Investment: '📈', Rent: '🏠',
+  Utilities: '⚡', Travel: '✈️', Fitness: '🏋️', Subscriptions: '📺',
+  Other: '📌',
+};
+
+function capitalize(str: string | undefined | null): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function getCategoryIcon(name: string | undefined): string {
+  if (!name) return '📌';
+  return CATEGORY_ICONS[name] || '📌';
+}
+
 interface Transaction {
   id: string;
   amount: number;
@@ -15,7 +33,7 @@ interface Transaction {
 
 const RecentTransactions = ({ transactions, currency }: { transactions: Transaction[]; currency: Currency }) => {
   const deleteTransaction = useDeleteTransaction();
-  const recent = transactions.slice(0, 10);
+  const recent = transactions.slice(0, 5);
 
   if (recent.length === 0) {
     return (
@@ -32,38 +50,44 @@ const RecentTransactions = ({ transactions, currency }: { transactions: Transact
     <div className="surface-card rounded-lg p-6">
       <h3 className="text-sm font-medium text-muted-foreground mb-4">Recent Transactions</h3>
       <div className="space-y-1">
-        {recent.map((t) => (
-          <div
-            key={t.id}
-            className="flex items-center justify-between rounded-md p-3 hover:bg-accent/50 transition-colors group"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-bold">
-                {t.categories?.name?.charAt(0) || '?'}
+        {recent.map((t) => {
+          const catName = t.categories?.name || 'Other';
+          const icon = getCategoryIcon(catName);
+          const isIncome = t.type === 'income';
+
+          return (
+            <div
+              key={t.id}
+              className="flex items-center justify-between rounded-md p-3 hover:bg-accent/50 transition-colors group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/40 text-base">
+                  {icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground font-medium truncate">
+                    {capitalize(t.note) || capitalize(catName)}
+                    {t.is_recurring && <span className="ml-1 text-xs text-muted-foreground">↻</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {capitalize(catName)} · {format(new Date(t.date), 'MMM d')}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm text-foreground truncate">
-                  {t.note || t.categories?.name || 'Transaction'}
-                  {t.is_recurring && <span className="ml-1 text-xs text-muted-foreground">↻</span>}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t.categories?.name} · {format(new Date(t.date), 'MMM d')}
-                </p>
+              <div className="flex items-center gap-2">
+                <span className={`font-mono-finance text-sm font-medium ${isIncome ? 'text-green-500' : 'text-red-400'}`}>
+                  {isIncome ? '+' : '-'}{formatAmount(Number(t.amount), currency)}
+                </span>
+                <button
+                  onClick={() => deleteTransaction.mutate(t.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`font-mono-finance text-sm font-medium ${t.type === 'income' ? 'text-primary' : 'text-foreground'}`}>
-                {t.type === 'income' ? '+' : '-'}{formatAmount(Number(t.amount), currency)}
-              </span>
-              <button
-                onClick={() => deleteTransaction.mutate(t.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -1,21 +1,37 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile, Currency } from '@/hooks/useProfile';
+import { useProfile, Currency, currencySymbols } from '@/hooks/useProfile';
 import { useCategories, useAddCategory } from '@/hooks/useCategories';
 import { useBudgets, useUpsertBudget } from '@/hooks/useBudgets';
+import { useExchangeRates, convertAmount } from '@/hooks/useExchangeRates';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { formatAmount } from '@/hooks/useProfile';
+import { ArrowRight } from 'lucide-react';
+
+const CurrencySelect = ({ value, onChange }: { value: Currency; onChange: (v: Currency) => void }) => (
+  <Select value={value} onValueChange={(v) => onChange(v as Currency)}>
+    <SelectTrigger className="w-28 border-border bg-background text-foreground">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent className="bg-card border-border">
+      <SelectItem value="EUR" className="text-foreground">€ EUR</SelectItem>
+      <SelectItem value="USD" className="text-foreground">$ USD</SelectItem>
+      <SelectItem value="CNY" className="text-foreground">¥ CNY</SelectItem>
+    </SelectContent>
+  </Select>
+);
 
 const SettingsPage = () => {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: categories } = useCategories();
   const { data: budgets } = useBudgets();
+  const { data: ratesData } = useExchangeRates();
   const addCategory = useAddCategory();
   const upsertBudget = useUpsertBudget();
   const currency = (profile?.currency as Currency) || 'USD';
@@ -23,6 +39,17 @@ const SettingsPage = () => {
   const [newCategory, setNewCategory] = useState('');
   const [budgetCat, setBudgetCat] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
+
+  // Currency converter state
+  const [convAmount, setConvAmount] = useState('');
+  const [convFrom, setConvFrom] = useState<Currency>('USD');
+  const [convTo, setConvTo] = useState<Currency>('EUR');
+
+  const convertedValue = useMemo(() => {
+    const num = parseFloat(convAmount);
+    if (!num || !ratesData?.rates) return null;
+    return convertAmount(num, convFrom, convTo, ratesData.rates);
+  }, [convAmount, convFrom, convTo, ratesData]);
 
   const handleCurrencyChange = async (val: string) => {
     if (!user) return;
@@ -74,9 +101,9 @@ const SettingsPage = () => {
     >
       <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
 
-      {/* Currency */}
+      {/* Display Currency */}
       <div className="surface-card rounded-lg p-6 space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">Currency</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">Display Currency</h3>
         <Select value={profile?.currency || 'USD'} onValueChange={handleCurrencyChange}>
           <SelectTrigger className="w-48 border-border bg-background text-foreground">
             <SelectValue />
@@ -87,6 +114,31 @@ const SettingsPage = () => {
             <SelectItem value="CNY" className="text-foreground">¥ Chinese Yuan</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Currency Converter */}
+      <div className="surface-card rounded-lg p-6 space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground">Currency Converter</h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Amount"
+            value={convAmount}
+            onChange={(e) => setConvAmount(e.target.value)}
+            className="w-32 border-border bg-background text-foreground font-mono-finance"
+          />
+          <CurrencySelect value={convFrom} onChange={setConvFrom} />
+          <ArrowRight size={16} className="text-muted-foreground shrink-0" />
+          <CurrencySelect value={convTo} onChange={setConvTo} />
+        </div>
+        {convertedValue !== null && (
+          <p className="text-lg font-mono-finance font-bold text-primary">
+            {currencySymbols[convFrom]}{parseFloat(convAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-muted-foreground mx-2">=</span>
+            {formatAmount(convertedValue, convTo)}
+          </p>
+        )}
       </div>
 
       {/* Custom Categories */}
@@ -149,8 +201,6 @@ const SettingsPage = () => {
           </div>
         )}
       </div>
-
-
 
       {/* Account */}
       <div className="surface-card rounded-lg p-6 space-y-3">
