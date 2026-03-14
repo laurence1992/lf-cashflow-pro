@@ -1,0 +1,2 @@
+ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_recurring_interval_check;
+ALTER TABLE public.transactions ADD CONSTRAINT transactions_recurring_interval_check CHECK (recurring_interval IN ('daily', 'weekly', 'monthly'));
