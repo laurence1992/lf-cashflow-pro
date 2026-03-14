@@ -89,6 +89,11 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
+      {/* Monthly Breakdown */}
+      <motion.div variants={itemVariants}>
+        <MonthlyBreakdown currency={currency} />
+      </motion.div>
+
       {/* Recent Transactions */}
       <motion.div variants={itemVariants}>
         <RecentTransactions transactions={transactions || []} currency={currency} />
