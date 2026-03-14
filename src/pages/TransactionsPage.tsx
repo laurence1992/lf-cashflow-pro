@@ -21,6 +21,11 @@ function getCategoryIcon(name: string | undefined): string {
   return CATEGORY_ICONS[name] || name.charAt(0).toUpperCase();
 }
 
+function capitalize(str: string | undefined | null): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 const TransactionsPage = () => {
   const { data: transactions } = useTransactions();
   const { data: profile } = useProfile();
