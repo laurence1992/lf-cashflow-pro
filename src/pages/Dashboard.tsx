@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile, formatAmount, Currency } from '@/hooks/useProfile';
+import { useExchangeRates, convertAmount } from '@/hooks/useExchangeRates';
 import { TrendingUp, TrendingDown, Wallet, Percent } from 'lucide-react';
 import SpendingChart from '@/components/charts/SpendingChart';
 import MonthlyBarChart from '@/components/charts/MonthlyBarChart';
@@ -26,16 +27,22 @@ const itemVariants = {
 const Dashboard = () => {
   const { data: transactions } = useTransactions();
   const { data: profile } = useProfile();
+  const { data: ratesData } = useExchangeRates();
   const currency = (profile?.currency as Currency) || 'USD';
 
   const stats = useMemo(() => {
     if (!transactions) return { income: 0, expenses: 0, balance: 0, savingsRate: 0 };
-    const income = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-    const expenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const rates = ratesData?.rates;
+    const income = transactions
+      .filter((t) => t.type === 'income')
+      .reduce((s, t) => s + convertAmount(Number(t.amount), ((t as any).currency as Currency) || 'USD', currency, rates), 0);
+    const expenses = transactions
+      .filter((t) => t.type === 'expense')
+      .reduce((s, t) => s + convertAmount(Number(t.amount), ((t as any).currency as Currency) || 'USD', currency, rates), 0);
     const balance = income - expenses;
     const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
     return { income, expenses, balance, savingsRate };
-  }, [transactions]);
+  }, [transactions, ratesData, currency]);
 
   const statCards = [
     { label: 'Total Balance', value: formatAmount(stats.balance, currency), icon: Wallet, highlight: true },
