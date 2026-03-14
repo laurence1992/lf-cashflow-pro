@@ -158,7 +158,7 @@ const TransactionsPage = () => {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-foreground font-medium truncate">
-                        {t.note || catName}
+                        {capitalize(t.note) || capitalize(catName)}
                       </p>
                       {t.is_recurring && (
                         <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary font-medium">
