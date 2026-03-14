@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useAddTransaction } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
+import { useProfile, Currency } from '@/hooks/useProfile';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -15,6 +16,9 @@ interface Props {
 }
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
+  const { data: profile } = useProfile();
+  const defaultCurrency = (profile?.currency as Currency) || 'USD';
+
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -22,6 +26,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringInterval, setRecurringInterval] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [txCurrency, setTxCurrency] = useState<Currency>(defaultCurrency);
 
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
@@ -39,6 +44,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
         date,
         is_recurring: isRecurring,
         recurring_interval: isRecurring ? recurringInterval : undefined,
+        currency: txCurrency,
       });
       toast.success('Transaction added');
       onOpenChange(false);
@@ -55,6 +61,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setIsRecurring(false);
     setType('expense');
+    setTxCurrency(defaultCurrency);
   };
 
   return (
@@ -86,17 +93,29 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
             </button>
           </div>
 
-          {/* Amount */}
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="border-border bg-background text-2xl font-mono-finance text-primary text-center h-14"
-            required
-          />
+          {/* Amount + Currency */}
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="border-border bg-background text-2xl font-mono-finance text-primary text-center h-14 flex-1"
+              required
+            />
+            <Select value={txCurrency} onValueChange={(v) => setTxCurrency(v as Currency)}>
+              <SelectTrigger className="border-border bg-background text-foreground w-24 h-14 text-lg font-mono-finance">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                <SelectItem value="EUR" className="text-foreground">€ EUR</SelectItem>
+                <SelectItem value="USD" className="text-foreground">$ USD</SelectItem>
+                <SelectItem value="CNY" className="text-foreground">¥ CNY</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Category */}
           <Select value={categoryId} onValueChange={setCategoryId} required>

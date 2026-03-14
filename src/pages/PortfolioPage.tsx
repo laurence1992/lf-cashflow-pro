@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useInvestments, useAddInvestment, useDeleteInvestment } from '@/hooks/useInvestments';
-import { useProfile, formatAmount, Currency } from '@/hooks/useProfile';
+import { useProfile, formatAmount, Currency, currencySymbols } from '@/hooks/useProfile';
+import { useExchangeRates, convertAmount } from '@/hooks/useExchangeRates';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +15,10 @@ import { format } from 'date-fns';
 const PortfolioPage = () => {
   const { data: investments } = useInvestments();
   const { data: profile } = useProfile();
-  const currency = (profile?.currency as Currency) || 'USD';
-  const { data: livePrices, isLoading: pricesLoading } = useLivePrices(investments, currency);
+  const displayCurrency = (profile?.currency as Currency) || 'USD';
+  const { data: ratesData } = useExchangeRates();
+  // Always fetch prices in USD, then convert
+  const { data: livePrices, isLoading: pricesLoading } = useLivePrices(investments, 'USD');
   const addInvestment = useAddInvestment();
   const deleteInvestment = useDeleteInvestment();
 
@@ -26,6 +29,7 @@ const PortfolioPage = () => {
   const [amountInvested, setAmountInvested] = useState('');
   const [units, setUnits] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [invCurrency, setInvCurrency] = useState<Currency>(displayCurrency);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +42,7 @@ const PortfolioPage = () => {
         amount_invested: parseFloat(amountInvested),
         units: parseFloat(units),
         purchase_date: purchaseDate,
+        currency: invCurrency,
       });
       toast.success('Investment added');
       setShowAdd(false);
@@ -54,21 +59,25 @@ const PortfolioPage = () => {
     setAmountInvested('');
     setUnits('');
     setPurchaseDate(format(new Date(), 'yyyy-MM-dd'));
+    setInvCurrency(displayCurrency);
   };
 
-  // Calculate portfolio summary
+  // Calculate portfolio summary — prices come in USD, convert to display currency
   const portfolio = (investments || []).map((inv) => {
     const priceData = livePrices?.[inv.ticker.toLowerCase()];
-    const currentPrice = priceData?.price || 0;
-    const currentValue = currentPrice * Number(inv.units);
-    const invested = Number(inv.amount_invested);
-    const gainLoss = currentValue - invested;
-    const gainLossPercent = invested > 0 ? (gainLoss / invested) * 100 : 0;
+    const priceUSD = priceData?.price || 0;
+    const currentValueUSD = priceUSD * Number(inv.units);
+    const currentValue = convertAmount(currentValueUSD, 'USD', displayCurrency, ratesData?.rates);
+    const investedOriginal = Number(inv.amount_invested);
+    const invCur = ((inv as any).currency as Currency) || 'USD';
+    const investedDisplay = convertAmount(investedOriginal, invCur, displayCurrency, ratesData?.rates);
+    const gainLoss = currentValue - investedDisplay;
+    const gainLossPercent = investedDisplay > 0 ? (gainLoss / investedDisplay) * 100 : 0;
     const change24h = priceData?.change24h ?? null;
-    return { ...inv, currentPrice, currentValue, gainLoss, gainLossPercent, change24h };
+    return { ...inv, currentValue, investedDisplay, gainLoss, gainLossPercent, change24h, invCur };
   });
 
-  const totalInvested = portfolio.reduce((s, p) => s + Number(p.amount_invested), 0);
+  const totalInvested = portfolio.reduce((s, p) => s + p.investedDisplay, 0);
   const totalValue = portfolio.reduce((s, p) => s + p.currentValue, 0);
   const totalGainLoss = totalValue - totalInvested;
   const totalGainLossPercent = totalInvested > 0 ? (totalGainLoss / totalInvested) * 100 : 0;
@@ -99,7 +108,7 @@ const PortfolioPage = () => {
             <span className="text-xs text-muted-foreground">Total Invested</span>
           </div>
           <p className="text-lg font-mono-finance font-bold text-foreground">
-            {formatAmount(totalInvested, currency)}
+            {formatAmount(totalInvested, displayCurrency)}
           </p>
         </div>
         <div className={`surface-card rounded-lg p-4 ${totalGainLoss >= 0 ? 'border-green-500/30' : 'border-red-500/30'}`}>
@@ -112,7 +121,7 @@ const PortfolioPage = () => {
             <span className="text-xs text-muted-foreground">Current Value</span>
           </div>
           <p className={`text-lg font-mono-finance font-bold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {pricesLoading ? '...' : formatAmount(totalValue, currency)}
+            {pricesLoading ? '...' : formatAmount(totalValue, displayCurrency)}
           </p>
         </div>
         <div className="surface-card rounded-lg p-4 col-span-2 lg:col-span-1">
@@ -122,7 +131,7 @@ const PortfolioPage = () => {
           <p className={`text-lg font-mono-finance font-bold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
             {pricesLoading ? '...' : (
               <>
-                {totalGainLoss >= 0 ? '+' : ''}{formatAmount(totalGainLoss, currency)}
+                {totalGainLoss >= 0 ? '+' : ''}{formatAmount(totalGainLoss, displayCurrency)}
                 <span className="text-sm ml-2">({totalGainLossPercent >= 0 ? '+' : ''}{totalGainLossPercent.toFixed(2)}%)</span>
               </>
             )}
@@ -155,14 +164,14 @@ const PortfolioPage = () => {
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {Number(inv.units).toLocaleString(undefined, { maximumFractionDigits: 8 })} units · {format(new Date(inv.purchase_date), 'MMM d, yyyy')}
+                    {Number(inv.units).toLocaleString(undefined, { maximumFractionDigits: 8 })} units · {format(new Date(inv.purchase_date), 'MMM d, yyyy')} · {currencySymbols[inv.invCur]}{Number(inv.amount_invested).toLocaleString('en-US', { minimumFractionDigits: 2 })} invested
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <p className={`font-mono-finance text-sm font-medium ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {pricesLoading ? '...' : formatAmount(inv.currentValue, currency)}
+                    {pricesLoading ? '...' : formatAmount(inv.currentValue, displayCurrency)}
                   </p>
                   <div className="flex items-center gap-2 justify-end">
                     <span className={`text-xs font-mono-finance ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -218,16 +227,28 @@ const PortfolioPage = () => {
                 <SelectItem value="etf" className="text-foreground">ETF</SelectItem>
               </SelectContent>
             </Select>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Amount invested"
-              value={amountInvested}
-              onChange={(e) => setAmountInvested(e.target.value)}
-              className="border-border bg-background text-foreground placeholder:text-muted-foreground"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Amount invested"
+                value={amountInvested}
+                onChange={(e) => setAmountInvested(e.target.value)}
+                className="border-border bg-background text-foreground placeholder:text-muted-foreground flex-1"
+                required
+              />
+              <Select value={invCurrency} onValueChange={(v) => setInvCurrency(v as Currency)}>
+                <SelectTrigger className="border-border bg-background text-foreground w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="EUR" className="text-foreground">€ EUR</SelectItem>
+                  <SelectItem value="USD" className="text-foreground">$ USD</SelectItem>
+                  <SelectItem value="CNY" className="text-foreground">¥ CNY</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Input
               type="number"
               step="0.00000001"

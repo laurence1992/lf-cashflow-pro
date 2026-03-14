@@ -1,16 +1,18 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useTransactions, useDeleteTransaction } from '@/hooks/useTransactions';
-import { useProfile, formatAmount, Currency } from '@/hooks/useProfile';
+import { useProfile, formatAmount, Currency, currencySymbols } from '@/hooks/useProfile';
+import { useExchangeRates, convertAmount } from '@/hooks/useExchangeRates';
 import { format } from 'date-fns';
-import { Trash2, Search } from 'lucide-react';
+import { Trash2, Search, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const TransactionsPage = () => {
   const { data: transactions } = useTransactions();
   const { data: profile } = useProfile();
-  const currency = (profile?.currency as Currency) || 'USD';
+  const displayCurrency = (profile?.currency as Currency) || 'USD';
+  const { data: ratesData } = useExchangeRates();
   const deleteTransaction = useDeleteTransaction();
 
   const [search, setSearch] = useState('');
@@ -23,7 +25,7 @@ const TransactionsPage = () => {
       const matchesSearch =
         !search ||
         t.note?.toLowerCase().includes(search.toLowerCase()) ||
-        t.categories?.name?.toLowerCase().includes(search.toLowerCase());
+        (t.categories as any)?.name?.toLowerCase().includes(search.toLowerCase());
       return matchesType && matchesSearch;
     });
   }, [transactions, search, filterType]);
@@ -69,42 +71,58 @@ const TransactionsPage = () => {
               : 'No transactions match your filters.'}
           </p>
         ) : (
-          filtered.map((t) => (
-            <div
-              key={t.id}
-              className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm font-bold">
-                  {t.categories?.name?.charAt(0) || '?'}
+          filtered.map((t) => {
+            const txCurrency = ((t as any).currency as Currency) || 'USD';
+            const originalAmount = Number(t.amount);
+            const convertedAmount = convertAmount(originalAmount, txCurrency, displayCurrency, ratesData?.rates);
+            const showConversion = txCurrency !== displayCurrency;
+            const cat = t.categories as any;
+
+            return (
+              <div
+                key={t.id}
+                className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm font-bold">
+                    {cat?.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground truncate">
+                      {t.note || cat?.name || 'Transaction'}
+                      {t.is_recurring && (
+                        <span className="ml-2 inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                          {t.recurring_interval || 'recurring'}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {cat?.name} · {format(new Date(t.date), 'MMM d, yyyy')}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-foreground truncate">
-                    {t.note || t.categories?.name || 'Transaction'}
-                    {t.is_recurring && (
-                      <span className="ml-2 inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary font-medium">
-                        {t.recurring_interval || 'recurring'}
-                      </span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className={`font-mono-finance text-sm font-medium ${t.type === 'income' ? 'text-primary' : 'text-foreground'}`}>
+                      {t.type === 'income' ? '+' : '-'}{currencySymbols[txCurrency]}{Math.abs(originalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    {showConversion && (
+                      <p className="text-[10px] text-muted-foreground font-mono-finance flex items-center justify-end gap-0.5">
+                        <ArrowRight size={8} />
+                        {formatAmount(convertedAmount, displayCurrency)}
+                      </p>
                     )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.categories?.name} · {format(new Date(t.date), 'MMM d, yyyy')}
-                  </p>
+                  </div>
+                  <button
+                    onClick={() => deleteTransaction.mutate(t.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`font-mono-finance text-sm font-medium ${t.type === 'income' ? 'text-primary' : 'text-foreground'}`}>
-                  {t.type === 'income' ? '+' : '-'}{formatAmount(Number(t.amount), currency)}
-                </span>
-                <button
-                  onClick={() => deleteTransaction.mutate(t.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </motion.div>

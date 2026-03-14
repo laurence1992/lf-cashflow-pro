@@ -29,6 +29,7 @@ export const useAddInvestment = () => {
       amount_invested: number;
       units: number;
       purchase_date: string;
+      currency?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
