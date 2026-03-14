@@ -171,7 +171,7 @@ const TransactionsPage = () => {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {catName} · {format(new Date(t.date), 'MMM d, yyyy')}
+                      {capitalize(catName)} · {format(new Date(t.date), 'MMM d, yyyy')}
                     </p>
                   </div>
                 </div>
