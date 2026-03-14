@@ -65,25 +65,6 @@ const SettingsPage = () => {
     }
   };
 
-  // Monthly breakdown
-  const monthlyBreakdown = useMemo(() => {
-    if (!transactions) return [];
-    const months = [];
-    for (let i = 0; i < 6; i++) {
-      const d = subMonths(new Date(), i);
-      const start = startOfMonth(d);
-      const end = endOfMonth(d);
-      const monthTx = transactions.filter((t) => {
-        const td = new Date(t.date);
-        return td >= start && td <= end;
-      });
-      const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-      const expenses = monthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-      months.push({ label: format(d, 'MMM yyyy'), income, expenses, net: income - expenses });
-    }
-    return months;
-  }, [transactions]);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
