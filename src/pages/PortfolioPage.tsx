@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trash2, Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Trash2, Plus, TrendingUp, TrendingDown, Wallet, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -17,8 +18,7 @@ const PortfolioPage = () => {
   const { data: profile } = useProfile();
   const displayCurrency = (profile?.currency as Currency) || 'USD';
   const { data: ratesData } = useExchangeRates();
-  // Always fetch prices in USD, then convert
-  const { data: livePrices, isLoading: pricesLoading } = useLivePrices(investments, 'USD');
+  const { data: livePrices, isLoading: pricesLoading, isFetching, refreshPrices } = useLivePrices(investments, 'USD');
   const addInvestment = useAddInvestment();
   const deleteInvestment = useDeleteInvestment();
 
@@ -62,7 +62,6 @@ const PortfolioPage = () => {
     setInvCurrency(displayCurrency);
   };
 
-  // Calculate portfolio summary — prices come in USD, convert to display currency
   const portfolio = (investments || []).map((inv) => {
     const priceData = livePrices?.[inv.ticker.toLowerCase()];
     const priceUSD = priceData?.price || 0;
@@ -74,13 +73,20 @@ const PortfolioPage = () => {
     const gainLoss = currentValue - investedDisplay;
     const gainLossPercent = investedDisplay > 0 ? (gainLoss / investedDisplay) * 100 : 0;
     const change24h = priceData?.change24h ?? null;
-    return { ...inv, currentValue, investedDisplay, gainLoss, gainLossPercent, change24h, invCur };
+    const isCached = priceData?.cached ?? false;
+    const hasPrice = !!priceData;
+    return { ...inv, currentValue, investedDisplay, gainLoss, gainLossPercent, change24h, invCur, isCached, hasPrice };
   });
 
   const totalInvested = portfolio.reduce((s, p) => s + p.investedDisplay, 0);
   const totalValue = portfolio.reduce((s, p) => s + p.currentValue, 0);
   const totalGainLoss = totalValue - totalInvested;
   const totalGainLossPercent = totalInvested > 0 ? (totalGainLoss / totalInvested) * 100 : 0;
+  const hasCachedData = portfolio.some((p) => p.isCached);
+
+  const PriceSkeleton = () => (
+    <Skeleton className="h-4 w-20 bg-muted/40" />
+  );
 
   return (
     <motion.div
@@ -90,7 +96,26 @@ const PortfolioPage = () => {
       className="space-y-6"
     >
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Portfolio</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Portfolio</h1>
+          <Button
+            onClick={() => {
+              refreshPrices();
+              toast.success('Refreshing prices...');
+            }}
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            disabled={isFetching}
+          >
+            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+          </Button>
+          {hasCachedData && (
+            <span className="text-[10px] rounded bg-accent px-1.5 py-0.5 text-muted-foreground">
+              Some prices cached
+            </span>
+          )}
+        </div>
         <Button
           onClick={() => setShowAdd(true)}
           className="bg-primary text-primary-foreground hover:bg-gold-glow active:scale-95"
@@ -120,22 +145,26 @@ const PortfolioPage = () => {
             )}
             <span className="text-xs text-muted-foreground">Current Value</span>
           </div>
-          <p className={`text-lg font-mono-finance font-bold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {pricesLoading ? '...' : formatAmount(totalValue, displayCurrency)}
-          </p>
+          {pricesLoading ? (
+            <Skeleton className="h-7 w-28 bg-muted/40" />
+          ) : (
+            <p className={`text-lg font-mono-finance font-bold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {formatAmount(totalValue, displayCurrency)}
+            </p>
+          )}
         </div>
         <div className="surface-card rounded-lg p-4 col-span-2 lg:col-span-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-muted-foreground">Overall Gain/Loss</span>
           </div>
-          <p className={`text-lg font-mono-finance font-bold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {pricesLoading ? '...' : (
-              <>
-                {totalGainLoss >= 0 ? '+' : ''}{formatAmount(totalGainLoss, displayCurrency)}
-                <span className="text-sm ml-2">({totalGainLossPercent >= 0 ? '+' : ''}{totalGainLossPercent.toFixed(2)}%)</span>
-              </>
-            )}
-          </p>
+          {pricesLoading ? (
+            <Skeleton className="h-7 w-36 bg-muted/40" />
+          ) : (
+            <p className={`text-lg font-mono-finance font-bold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {totalGainLoss >= 0 ? '+' : ''}{formatAmount(totalGainLoss, displayCurrency)}
+              <span className="text-sm ml-2">({totalGainLossPercent >= 0 ? '+' : ''}{totalGainLossPercent.toFixed(2)}%)</span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -170,21 +199,35 @@ const PortfolioPage = () => {
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className={`font-mono-finance text-sm font-medium ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {pricesLoading ? '...' : formatAmount(inv.currentValue, displayCurrency)}
-                  </p>
-                    <div className="flex items-center gap-2 justify-end">
-                     <span className={`text-xs font-mono-finance ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                       {pricesLoading ? '' : `${inv.gainLoss >= 0 ? '+' : ''}${inv.gainLossPercent.toFixed(2)}%`}
-                     </span>
-                     {!pricesLoading && (
-                       <span className={`text-[10px] font-mono-finance px-1 rounded ${
-                         (inv.change24h ?? 0) >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
-                       }`}>
-                         24h {(inv.change24h ?? 0) >= 0 ? '+' : ''}{(inv.change24h ?? 0).toFixed(2)}%
-                       </span>
-                     )}
-                  </div>
+                  {pricesLoading ? (
+                    <div className="space-y-1">
+                      <PriceSkeleton />
+                      <Skeleton className="h-3 w-16 bg-muted/40 ml-auto" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1 justify-end">
+                        <p className={`font-mono-finance text-sm font-medium ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {formatAmount(inv.currentValue, displayCurrency)}
+                        </p>
+                        {inv.isCached && (
+                          <span className="text-[8px] rounded bg-accent px-1 py-0.5 text-muted-foreground">
+                            cached
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className={`text-xs font-mono-finance ${inv.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {inv.gainLoss >= 0 ? '+' : ''}{inv.gainLossPercent.toFixed(2)}%
+                        </span>
+                        <span className={`text-[10px] font-mono-finance px-1 rounded ${
+                          (inv.change24h ?? 0) >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
+                        }`}>
+                          24h {(inv.change24h ?? 0) >= 0 ? '+' : ''}{(inv.change24h ?? 0).toFixed(2)}%
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <button
                   onClick={() => deleteInvestment.mutate(inv.id)}

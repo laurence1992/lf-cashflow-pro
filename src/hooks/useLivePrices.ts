@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Currency } from '@/hooks/useProfile';
 
 const currencyToCoingecko: Record<Currency, string> = {
@@ -7,9 +7,10 @@ const currencyToCoingecko: Record<Currency, string> = {
   CNY: 'cny',
 };
 
-interface PriceData {
+export interface PriceData {
   price: number;
   change24h: number | null;
+  cached?: boolean;
 }
 
 const TICKER_TO_COINGECKO: Record<string, string> = {
@@ -40,23 +41,42 @@ const TICKER_TO_COINGECKO: Record<string, string> = {
 function resolveCoingeckoId(ticker: string, assetName?: string): string {
   const key = ticker.toLowerCase();
   if (TICKER_TO_COINGECKO[key]) return TICKER_TO_COINGECKO[key];
-  // Fallback: use the lowercase asset name the user entered
   if (assetName) return assetName.toLowerCase().replace(/\s+/g, '-');
   return key;
+}
+
+const CACHE_KEY = 'lf-price-cache';
+
+function getCachedPrices(): Record<string, PriceData> {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function setCachedPrices(prices: Record<string, PriceData>) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(prices));
+  } catch {}
 }
 
 export const useLivePrices = (
   investments: Array<{ ticker: string; asset_type: string; asset_name: string }> | undefined,
   currency: Currency
 ) => {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['live-prices', investments?.map((i) => `${i.ticker}-${i.asset_type}`), currency],
     queryFn: async (): Promise<Record<string, PriceData>> => {
       if (!investments || investments.length === 0) return {};
 
       const prices: Record<string, PriceData> = {};
+      const cached = getCachedPrices();
 
-      // Build crypto list with coingecko IDs
+      // Build crypto list
       const cryptoInvestments = investments.filter((i) => i.asset_type === 'crypto');
       const tickerToId: Record<string, string> = {};
       for (const inv of cryptoInvestments) {
@@ -85,18 +105,32 @@ export const useLivePrices = (
               if (data[id]) {
                 prices[ticker] = {
                   price: data[id][vsCurrency] || 0,
-                  change24h: data[id][`${vsCurrency}_24h_change`] || null,
+                  change24h: data[id][`${vsCurrency}_24h_change`] ?? null,
+                  cached: false,
                 };
+              }
+            }
+          } else {
+            // Use cached for crypto on failure
+            for (const ticker of Object.keys(tickerToId)) {
+              if (cached[ticker]) {
+                prices[ticker] = { ...cached[ticker], cached: true };
               }
             }
           }
         } catch (e) {
           console.error('CoinGecko fetch error:', e);
+          for (const ticker of Object.keys(tickerToId)) {
+            if (cached[ticker]) {
+              prices[ticker] = { ...cached[ticker], cached: true };
+            }
+          }
         }
       }
 
       // Fetch stock/ETF prices from Alpha Vantage
       for (const ticker of stockTickers) {
+        const key = ticker.toLowerCase();
         try {
           const res = await fetch(
             `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=Z3SJ7YFJI0U9K2WS`
@@ -107,15 +141,33 @@ export const useLivePrices = (
             if (quote && quote['05. price']) {
               const price = parseFloat(quote['05. price']);
               const changePercent = parseFloat((quote['10. change percent'] || '0').replace('%', ''));
-              prices[ticker.toLowerCase()] = {
-                price,
-                change24h: changePercent,
-              };
+              prices[key] = { price, change24h: changePercent, cached: false };
+            } else {
+              // Rate limited or empty — use cache
+              if (cached[key]) {
+                prices[key] = { ...cached[key], cached: true };
+              }
             }
+          } else if (cached[key]) {
+            prices[key] = { ...cached[key], cached: true };
           }
         } catch (e) {
           console.error('Alpha Vantage fetch error:', e);
+          if (cached[key]) {
+            prices[key] = { ...cached[key], cached: true };
+          }
         }
+      }
+
+      // Update cache with fresh prices
+      const freshPrices: Record<string, PriceData> = {};
+      for (const [k, v] of Object.entries(prices)) {
+        if (!v.cached) {
+          freshPrices[k] = v;
+        }
+      }
+      if (Object.keys(freshPrices).length > 0) {
+        setCachedPrices({ ...cached, ...freshPrices });
       }
 
       return prices;
@@ -124,4 +176,10 @@ export const useLivePrices = (
     staleTime: 60_000,
     refetchOnWindowFocus: true,
   });
+
+  const refreshPrices = () => {
+    queryClient.invalidateQueries({ queryKey: ['live-prices'] });
+  };
+
+  return { ...query, refreshPrices };
 };
