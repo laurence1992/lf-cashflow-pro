@@ -30,7 +30,7 @@ export const useAddTransaction = () => {
       note?: string;
       date: string;
       is_recurring?: boolean;
-      recurring_interval?: 'weekly' | 'monthly';
+      recurring_interval?: 'daily' | 'weekly' | 'monthly';
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase

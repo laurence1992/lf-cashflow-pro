@@ -1,24 +1,20 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile, Currency, currencySymbols } from '@/hooks/useProfile';
+import { useProfile, Currency } from '@/hooks/useProfile';
 import { useCategories, useAddCategory } from '@/hooks/useCategories';
 import { useBudgets, useUpsertBudget } from '@/hooks/useBudgets';
-import { useTransactions } from '@/hooks/useTransactions';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { formatAmount } from '@/hooks/useProfile';
 
 const SettingsPage = () => {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: categories } = useCategories();
-  const { data: transactions } = useTransactions();
   const { data: budgets } = useBudgets();
   const addCategory = useAddCategory();
   const upsertBudget = useUpsertBudget();
@@ -68,25 +64,6 @@ const SettingsPage = () => {
       toast.error(err.message);
     }
   };
-
-  // Monthly breakdown
-  const monthlyBreakdown = useMemo(() => {
-    if (!transactions) return [];
-    const months = [];
-    for (let i = 0; i < 6; i++) {
-      const d = subMonths(new Date(), i);
-      const start = startOfMonth(d);
-      const end = endOfMonth(d);
-      const monthTx = transactions.filter((t) => {
-        const td = new Date(t.date);
-        return td >= start && td <= end;
-      });
-      const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-      const expenses = monthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-      months.push({ label: format(d, 'MMM yyyy'), income, expenses, net: income - expenses });
-    }
-    return months;
-  }, [transactions]);
 
   return (
     <motion.div
@@ -173,24 +150,7 @@ const SettingsPage = () => {
         )}
       </div>
 
-      {/* Monthly Breakdown */}
-      <div className="surface-card rounded-lg p-6 space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">Monthly Breakdown</h3>
-        <div className="space-y-2">
-          {monthlyBreakdown.map((m) => (
-            <div key={m.label} className="flex items-center justify-between rounded-md p-3 bg-accent/30">
-              <span className="text-sm text-foreground">{m.label}</span>
-              <div className="flex gap-4 text-xs font-mono-finance">
-                <span className="text-primary">+{formatAmount(m.income, currency)}</span>
-                <span className="text-foreground">-{formatAmount(m.expenses, currency)}</span>
-                <span className={m.net >= 0 ? 'text-primary' : 'text-destructive'}>
-                  {m.net >= 0 ? '+' : ''}{formatAmount(m.net, currency)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* Account */}
       <div className="surface-card rounded-lg p-6 space-y-3">

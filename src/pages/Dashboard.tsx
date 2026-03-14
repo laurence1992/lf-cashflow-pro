@@ -8,6 +8,7 @@ import MonthlyBarChart from '@/components/charts/MonthlyBarChart';
 import SpendingTrendChart from '@/components/charts/SpendingTrendChart';
 import RecentTransactions from '@/components/RecentTransactions';
 import BudgetOverview from '@/components/BudgetOverview';
+import MonthlyBreakdown from '@/components/MonthlyBreakdown';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -87,6 +88,11 @@ const Dashboard = () => {
           <BudgetOverview currency={currency} />
         </motion.div>
       </div>
+
+      {/* Monthly Breakdown */}
+      <motion.div variants={itemVariants}>
+        <MonthlyBreakdown currency={currency} />
+      </motion.div>
 
       {/* Recent Transactions */}
       <motion.div variants={itemVariants}>
