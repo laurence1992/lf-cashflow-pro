@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import PuntLogo from '@/components/PuntLogo';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
