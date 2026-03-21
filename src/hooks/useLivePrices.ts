@@ -45,7 +45,7 @@ function resolveCoingeckoId(ticker: string, assetName?: string): string {
   return key;
 }
 
-const CACHE_KEY = 'lf-price-cache';
+const CACHE_KEY = 'punt-price-cache';
 
 function getCachedPrices(): Record<string, PriceData> {
   try {
