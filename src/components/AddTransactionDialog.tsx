@@ -43,6 +43,7 @@ interface ParsedVoice {
   currency: Currency;
   categoryName: string;
   categoryId: string | null;
+  note: string;
 }
 
 const WORD_TO_NUM: Record<string, number> = {
