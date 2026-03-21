@@ -139,11 +139,16 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [txCurrency, setTxCurrency] = useState<Currency>(defaultCurrency);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [voiceDetection, setVoiceDetection] = useState<ParsedVoice & { rawText: string } | null>(null);
+
+  useEffect(() => {
+    if (open) setTxCurrency(defaultCurrency);
+  }, [open, defaultCurrency]);
 
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
