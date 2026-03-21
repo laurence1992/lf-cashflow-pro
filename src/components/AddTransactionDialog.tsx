@@ -203,13 +203,13 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     console.log('[VoiceConfirm]', voiceDetection);
     if (voiceDetection.amount) setAmount(voiceDetection.amount);
     setTxCurrency(voiceDetection.currency);
+    if (voiceDetection.note) setNote(voiceDetection.note);
 
     if (voiceDetection.categoryId) {
       setCategoryId(voiceDetection.categoryId);
       setIsCreatingCategory(false);
       setNewCategoryName('');
     } else {
-      // No exact match — try "Other" category as fallback
       const otherCat = categories?.find(c => c.name.toLowerCase() === 'other');
       if (otherCat) {
         setCategoryId(otherCat.id);
@@ -224,7 +224,6 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setType('income');
     }
     setVoiceDetection(null);
-    // Scroll form into view after fields are set
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
