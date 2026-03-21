@@ -31,12 +31,22 @@ const CATEGORY_MAP: Record<string, string> = {
   taxi: 'Transport', uber: 'Transport', bus: 'Transport', train: 'Transport', metro: 'Transport', gas: 'Transport', fuel: 'Transport', petrol: 'Transport', transport: 'Transport', travel: 'Transport', flight: 'Transport',
   gym: 'Fitness', fitness: 'Fitness', workout: 'Fitness', exercise: 'Fitness', sport: 'Fitness', sports: 'Fitness',
   shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping', shoes: 'Shopping', amazon: 'Shopping',
-  bills: 'Bills', bill: 'Bills', rent: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
+  bills: 'Bills', bill: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
   movie: 'Entertainment', movies: 'Entertainment', cinema: 'Entertainment', netflix: 'Entertainment', entertainment: 'Entertainment', game: 'Entertainment', games: 'Entertainment', spotify: 'Entertainment',
-  salary: 'Salary', pay: 'Salary', wage: 'Salary', income: 'Salary',
-  gift: 'Gift', gifts: 'Gift', present: 'Gift',
   subscription: 'Subscriptions',
+  rent: 'Bills',
+  // Income keywords
+  salary: 'Salary', wages: 'Salary', wage: 'Salary', pay: 'Salary', paid: 'Salary', paycheck: 'Salary', income: 'Salary', earned: 'Salary',
+  bonus: 'Salary', commission: 'Salary', dividend: 'Salary', interest: 'Salary', transfer: 'Salary',
+  freelance: 'Freelance', invoice: 'Freelance', payment: 'Freelance',
+  gift: 'Gift', gifts: 'Gift', received: 'Gift', present: 'Gift',
 };
+
+const INCOME_WORDS = new Set([
+  'salary', 'wages', 'wage', 'pay', 'paid', 'paycheck', 'income', 'earned',
+  'freelance', 'invoice', 'payment', 'bonus', 'commission', 'dividend', 'interest',
+  'received', 'transfer',
+]);
 
 interface ParsedVoice {
   amount: string | null;
@@ -44,6 +54,7 @@ interface ParsedVoice {
   categoryName: string;
   categoryId: string | null;
   note: string;
+  isIncome: boolean;
 }
 
 const WORD_TO_NUM: Record<string, number> = {
@@ -139,12 +150,11 @@ function parseSpeech(
     }
   }
 
-  // Check for income keywords
-  const incomeWords = ['salary', 'income', 'earned', 'wage', 'pay'];
-  origWords.forEach((w, i) => {
-    if (incomeWords.includes(w)) {
-      categoryName = 'Salary';
-      consumed.add(i);
+  // Detect income based on keywords
+  let isIncome = false;
+  origWords.forEach((w) => {
+    if (INCOME_WORDS.has(w)) {
+      isIncome = true;
     }
   });
 
@@ -164,9 +174,9 @@ function parseSpeech(
     .filter(w => !fillerWords.has(w));
   const note = noteWords.join(' ').trim();
 
-  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, note, rawText: text });
+  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, note, isIncome, rawText: text });
 
-  return { amount, currency, categoryName, categoryId, note };
+  return { amount, currency, categoryName, categoryId, note, isIncome };
 }
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
@@ -229,9 +239,8 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setNewCategoryName('');
     }
 
-    // Check for income
-    const lower = voiceDetection.rawText.toLowerCase();
-    if (['salary', 'income', 'earned', 'wage'].some(w => lower.includes(w))) {
+    // Set type based on parsed income detection
+    if (voiceDetection.isIncome) {
       setType('income');
     }
     setVoiceDetection(null);
@@ -373,6 +382,9 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
               <p className="text-lg font-bold text-center text-foreground font-mono-finance">
                 {currencySymbols[voiceDetection.currency]}
                 {voiceDetection.amount || '?'} — {voiceDetection.categoryName}
+                {voiceDetection.isIncome && (
+                  <span className="ml-1.5 text-sm font-semibold text-primary">(Income)</span>
+                )}
               </p>
               {voiceDetection.note && (
                 <p className="text-sm text-muted-foreground text-center">
