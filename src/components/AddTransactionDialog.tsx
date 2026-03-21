@@ -174,9 +174,9 @@ function parseSpeech(
     .filter(w => !fillerWords.has(w));
   const note = noteWords.join(' ').trim();
 
-  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, note, rawText: text });
+  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, note, isIncome, rawText: text });
 
-  return { amount, currency, categoryName, categoryId, note };
+  return { amount, currency, categoryName, categoryId, note, isIncome };
 }
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
