@@ -191,6 +191,10 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setType('income');
     }
     setVoiceDetection(null);
+    // Scroll form into view after fields are set
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const cancelVoiceDetection = () => {
