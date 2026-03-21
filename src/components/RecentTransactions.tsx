@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
-import { Currency, formatAmount } from '@/hooks/useProfile';
-import { Trash2 } from 'lucide-react';
+import { Currency, formatAmount, currencySymbols } from '@/hooks/useProfile';
+import { useExchangeRates, convertAmount } from '@/hooks/useExchangeRates';
+import { Trash2, ArrowRight } from 'lucide-react';
 import { useDeleteTransaction } from '@/hooks/useTransactions';
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -33,6 +34,7 @@ interface Transaction {
 
 const RecentTransactions = ({ transactions, currency }: { transactions: Transaction[]; currency: Currency }) => {
   const deleteTransaction = useDeleteTransaction();
+  const { data: ratesData } = useExchangeRates();
   const recent = transactions.slice(0, 5);
 
   if (recent.length === 0) {
@@ -54,6 +56,10 @@ const RecentTransactions = ({ transactions, currency }: { transactions: Transact
           const catName = t.categories?.name || 'Other';
           const icon = getCategoryIcon(catName);
           const isIncome = t.type === 'income';
+          const txCurrency = ((t as any).currency as Currency) || 'USD';
+          const originalAmount = Number(t.amount);
+          const convertedAmount = convertAmount(originalAmount, txCurrency, currency, ratesData?.rates);
+          const showConversion = txCurrency !== currency;
 
           return (
             <div
@@ -75,9 +81,17 @@ const RecentTransactions = ({ transactions, currency }: { transactions: Transact
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`font-mono-finance text-sm font-medium ${isIncome ? 'text-green-500' : 'text-red-400'}`}>
-                  {isIncome ? '+' : '-'}{formatAmount(Number(t.amount), currency)}
-                </span>
+                <div className="text-right">
+                  <span className={`font-mono-finance text-sm font-medium ${isIncome ? 'text-green-500' : 'text-red-400'}`}>
+                    {isIncome ? '+' : '-'}{currencySymbols[txCurrency]}{Math.abs(originalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  {showConversion && (
+                    <p className="text-[10px] text-muted-foreground font-mono-finance flex items-center justify-end gap-0.5">
+                      <ArrowRight size={8} />
+                      {formatAmount(convertedAmount, currency)}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => deleteTransaction.mutate(t.id)}
                   className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
