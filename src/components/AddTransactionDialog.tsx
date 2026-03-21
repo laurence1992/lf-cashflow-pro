@@ -380,9 +380,9 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
           {/* Amount + Currency */}
           <div className="flex gap-2">
             <Input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*\.?[0-9]*"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
