@@ -150,12 +150,11 @@ function parseSpeech(
     }
   }
 
-  // Check for income keywords
-  const incomeWords = ['salary', 'income', 'earned', 'wage', 'pay'];
-  origWords.forEach((w, i) => {
-    if (incomeWords.includes(w)) {
-      categoryName = 'Salary';
-      consumed.add(i);
+  // Detect income based on keywords
+  let isIncome = false;
+  origWords.forEach((w) => {
+    if (INCOME_WORDS.has(w)) {
+      isIncome = true;
     }
   });
 
