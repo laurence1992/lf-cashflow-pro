@@ -24,8 +24,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-[240px] flex-col border-r border-border bg-sidebar p-6">
-        <Link to="/" className="text-2xl font-bold tracking-[-0.05em] text-primary mb-10">
-          LF
+        <Link to="/" className="flex items-center gap-2 mb-10">
+          <PuntLogo size={32} />
+          <span className="text-xl font-bold tracking-tight text-primary">Punt</span>
         </Link>
         <nav className="flex flex-col gap-1 flex-1">
           {navItems.map((item) => {

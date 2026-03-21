@@ -23,9 +23,9 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
       manifest: {
-        name: "LF — Larry Finance",
-        short_name: "LF",
-        description: "Your capital, commanded. Personal finance tracker.",
+        name: "Punt",
+        short_name: "Punt",
+        description: "Your money, managed. Personal finance tracker.",
         theme_color: "#1a1a2e",
         background_color: "#1a1a2e",
         display: "standalone",

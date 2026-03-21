@@ -43,9 +43,10 @@ const Auth = () => {
         transition={{ duration: 0.4, ease: [0.2, 0, 0, 1] }}
         className="w-full max-w-sm"
       >
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tighter text-primary">LF</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Your capital, commanded.</p>
+        <div className="mb-8 text-center flex flex-col items-center">
+          <PuntLogo size={56} />
+          <h1 className="text-3xl font-bold tracking-tight text-primary mt-3">Punt</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Your money, managed.</p>
         </div>
 
         <div className="surface-card rounded-lg p-6">

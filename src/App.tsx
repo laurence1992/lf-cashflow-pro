@@ -24,7 +24,7 @@ const ProtectedRoutes = () => {
   if (loading || profileLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-2xl font-bold tracking-tighter text-primary animate-pulse">LF</div>
+        <div className="text-2xl font-bold tracking-tighter text-primary animate-pulse">Punt</div>
       </div>
     );
   }
