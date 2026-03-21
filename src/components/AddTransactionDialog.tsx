@@ -363,7 +363,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           {/* Type Toggle */}
           <div className="flex gap-2">
             <button
