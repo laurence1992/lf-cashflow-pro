@@ -31,11 +31,15 @@ const CATEGORY_MAP: Record<string, string> = {
   taxi: 'Transport', uber: 'Transport', bus: 'Transport', train: 'Transport', metro: 'Transport', gas: 'Transport', fuel: 'Transport', petrol: 'Transport', transport: 'Transport', travel: 'Transport', flight: 'Transport',
   gym: 'Fitness', fitness: 'Fitness', workout: 'Fitness', exercise: 'Fitness', sport: 'Fitness', sports: 'Fitness',
   shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping', shoes: 'Shopping', amazon: 'Shopping',
-  bills: 'Bills', bill: 'Bills', rent: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
+  bills: 'Bills', bill: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
   movie: 'Entertainment', movies: 'Entertainment', cinema: 'Entertainment', netflix: 'Entertainment', entertainment: 'Entertainment', game: 'Entertainment', games: 'Entertainment', spotify: 'Entertainment',
-  salary: 'Salary', pay: 'Salary', wage: 'Salary', income: 'Salary',
-  gift: 'Gift', gifts: 'Gift', present: 'Gift',
   subscription: 'Subscriptions',
+  rent: 'Bills',
+  // Income keywords
+  salary: 'Salary', wages: 'Salary', wage: 'Salary', pay: 'Salary', paid: 'Salary', paycheck: 'Salary', income: 'Salary', earned: 'Salary',
+  bonus: 'Salary', commission: 'Salary', dividend: 'Salary', interest: 'Salary', transfer: 'Salary',
+  freelance: 'Freelance', invoice: 'Freelance', payment: 'Freelance',
+  gift: 'Gift', gifts: 'Gift', received: 'Gift', present: 'Gift',
 };
 
 interface ParsedVoice {
