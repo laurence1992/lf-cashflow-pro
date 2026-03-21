@@ -42,12 +42,19 @@ const CATEGORY_MAP: Record<string, string> = {
   gift: 'Gift', gifts: 'Gift', received: 'Gift', present: 'Gift',
 };
 
+const INCOME_WORDS = new Set([
+  'salary', 'wages', 'wage', 'pay', 'paid', 'paycheck', 'income', 'earned',
+  'freelance', 'invoice', 'payment', 'bonus', 'commission', 'dividend', 'interest',
+  'received', 'transfer',
+]);
+
 interface ParsedVoice {
   amount: string | null;
   currency: Currency;
   categoryName: string;
   categoryId: string | null;
   note: string;
+  isIncome: boolean;
 }
 
 const WORD_TO_NUM: Record<string, number> = {
