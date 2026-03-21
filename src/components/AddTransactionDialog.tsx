@@ -239,9 +239,8 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setNewCategoryName('');
     }
 
-    // Check for income
-    const lower = voiceDetection.rawText.toLowerCase();
-    if (['salary', 'income', 'earned', 'wage'].some(w => lower.includes(w))) {
+    // Set type based on parsed income detection
+    if (voiceDetection.isIncome) {
       setType('income');
     }
     setVoiceDetection(null);
