@@ -201,7 +201,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [voiceDetection, setVoiceDetection] = useState<ParsedVoice & { rawText: string } | null>(null);
 
   useEffect(() => {
-    if (open) setTxCurrency(defaultCurrency);
+    if (open && amount === '') setTxCurrency(defaultCurrency);
   }, [open, defaultCurrency]);
 
   const { data: categories } = useCategories();
