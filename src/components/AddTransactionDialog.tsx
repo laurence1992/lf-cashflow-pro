@@ -363,6 +363,11 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
                 {currencySymbols[voiceDetection.currency]}
                 {voiceDetection.amount || '?'} — {voiceDetection.categoryName}
               </p>
+              {voiceDetection.note && (
+                <p className="text-sm text-muted-foreground text-center">
+                  Note: "{voiceDetection.note}"
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground text-center italic">
                 "{voiceDetection.rawText}"
               </p>
