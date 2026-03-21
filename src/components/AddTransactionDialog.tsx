@@ -96,18 +96,29 @@ function parseSpeech(
     }
   }
 
-  // Extract category — first try hardcoded map
+  // Extract category — try hardcoded map with fuzzy matching
   let categoryName = 'Other';
   let matched = false;
-  let matchedCatWord: string | null = null;
   for (let i = 0; i < origWords.length; i++) {
     const w = origWords[i];
+    // Exact match first
     if (CATEGORY_MAP[w]) {
       categoryName = CATEGORY_MAP[w];
       matched = true;
-      matchedCatWord = w;
       consumed.add(i);
       break;
+    }
+    // Fuzzy match — if a CATEGORY_MAP key starts with same 4+ chars, accept it
+    if (w.length >= 4) {
+      for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
+        if (key.length >= 4 && (key.startsWith(w.slice(0, 4)) || w.startsWith(key.slice(0, 4)))) {
+          categoryName = cat;
+          matched = true;
+          consumed.add(i);
+          break;
+        }
+      }
+      if (matched) break;
     }
   }
 
