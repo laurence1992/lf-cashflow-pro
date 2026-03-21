@@ -145,14 +145,24 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
 
   const confirmVoiceDetection = () => {
     if (!voiceDetection) return;
+    console.log('[VoiceConfirm]', voiceDetection);
     if (voiceDetection.amount) setAmount(voiceDetection.amount);
     setTxCurrency(voiceDetection.currency);
+
     if (voiceDetection.categoryId) {
       setCategoryId(voiceDetection.categoryId);
       setIsCreatingCategory(false);
       setNewCategoryName('');
+    } else {
+      // No exact match — try "Other" category as fallback
+      const otherCat = categories?.find(c => c.name.toLowerCase() === 'other');
+      if (otherCat) {
+        setCategoryId(otherCat.id);
+      }
+      setIsCreatingCategory(false);
+      setNewCategoryName('');
     }
-    setNote(voiceDetection.rawText);
+
     // Check for income
     const lower = voiceDetection.rawText.toLowerCase();
     if (['salary', 'income', 'earned', 'wage'].some(w => lower.includes(w))) {
