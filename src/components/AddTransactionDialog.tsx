@@ -43,6 +43,7 @@ interface ParsedVoice {
   currency: Currency;
   categoryName: string;
   categoryId: string | null;
+  note: string;
 }
 
 const WORD_TO_NUM: Record<string, number> = {
@@ -69,15 +70,28 @@ function parseSpeech(
   const origWords = text.toLowerCase().trim().split(/\s+/);
   const words = lower.split(/\s+/);
 
-  // Extract amount
+  // Track which original words are "consumed" by amount, currency, or category
+  const consumed = new Set<number>();
+
+  // Extract amount — mark the word(s) that became the number
   const numMatch = lower.match(/(\d+(?:[.,]\d+)?)/);
   const amount = numMatch ? numMatch[1].replace(',', '.') : null;
+  // Mark original words that were number words or produced the digit
+  if (amount) {
+    origWords.forEach((w, i) => {
+      if (WORD_TO_NUM[w] !== undefined || /^\d+([.,]\d+)?$/.test(words[i])) {
+        consumed.add(i);
+      }
+    });
+  }
 
   // Extract currency
   let currency: Currency = defaultCurrency;
-  for (const word of words) {
-    if (CURRENCY_WORDS[word]) {
-      currency = CURRENCY_WORDS[word];
+  for (let i = 0; i < origWords.length; i++) {
+    const w = origWords[i];
+    if (CURRENCY_WORDS[w]) {
+      currency = CURRENCY_WORDS[w];
+      consumed.add(i);
       break;
     }
   }
@@ -85,10 +99,14 @@ function parseSpeech(
   // Extract category — first try hardcoded map
   let categoryName = 'Other';
   let matched = false;
-  for (const word of origWords) {
-    if (CATEGORY_MAP[word]) {
-      categoryName = CATEGORY_MAP[word];
+  let matchedCatWord: string | null = null;
+  for (let i = 0; i < origWords.length; i++) {
+    const w = origWords[i];
+    if (CATEGORY_MAP[w]) {
+      categoryName = CATEGORY_MAP[w];
       matched = true;
+      matchedCatWord = w;
+      consumed.add(i);
       break;
     }
   }
@@ -101,15 +119,23 @@ function parseSpeech(
       if (origWords.includes(catLower) || origLower.includes(catLower)) {
         categoryName = cat.name;
         matched = true;
+        // Mark matching words as consumed
+        origWords.forEach((w, i) => {
+          if (w === catLower || catLower.includes(w)) consumed.add(i);
+        });
         break;
       }
     }
   }
 
   // Check for income keywords
-  if (origWords.some(w => ['salary', 'income', 'earned', 'wage', 'pay'].includes(w))) {
-    categoryName = 'Salary';
-  }
+  const incomeWords = ['salary', 'income', 'earned', 'wage', 'pay'];
+  origWords.forEach((w, i) => {
+    if (incomeWords.includes(w)) {
+      categoryName = 'Salary';
+      consumed.add(i);
+    }
+  });
 
   // Find matching category ID
   let categoryId: string | null = null;
@@ -120,9 +146,16 @@ function parseSpeech(
     }
   }
 
-  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, rawText: text });
+  // Build note from remaining (unconsumed) words, filtering out filler words
+  const fillerWords = new Set(['on', 'for', 'at', 'the', 'a', 'an', 'in', 'to', 'of']);
+  const noteWords = origWords
+    .filter((_, i) => !consumed.has(i))
+    .filter(w => !fillerWords.has(w));
+  const note = noteWords.join(' ').trim();
 
-  return { amount, currency, categoryName, categoryId };
+  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, note, rawText: text });
+
+  return { amount, currency, categoryName, categoryId, note };
 }
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
@@ -170,13 +203,13 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     console.log('[VoiceConfirm]', voiceDetection);
     if (voiceDetection.amount) setAmount(voiceDetection.amount);
     setTxCurrency(voiceDetection.currency);
+    if (voiceDetection.note) setNote(voiceDetection.note);
 
     if (voiceDetection.categoryId) {
       setCategoryId(voiceDetection.categoryId);
       setIsCreatingCategory(false);
       setNewCategoryName('');
     } else {
-      // No exact match — try "Other" category as fallback
       const otherCat = categories?.find(c => c.name.toLowerCase() === 'other');
       if (otherCat) {
         setCategoryId(otherCat.id);
@@ -191,7 +224,6 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setType('income');
     }
     setVoiceDetection(null);
-    // Scroll form into view after fields are set
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -331,6 +363,11 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
                 {currencySymbols[voiceDetection.currency]}
                 {voiceDetection.amount || '?'} — {voiceDetection.categoryName}
               </p>
+              {voiceDetection.note && (
+                <p className="text-sm text-muted-foreground text-center">
+                  Note: "{voiceDetection.note}"
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground text-center italic">
                 "{voiceDetection.rawText}"
               </p>
