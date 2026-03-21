@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,11 +139,16 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
   const [txCurrency, setTxCurrency] = useState<Currency>(defaultCurrency);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [voiceDetection, setVoiceDetection] = useState<ParsedVoice & { rawText: string } | null>(null);
+
+  useEffect(() => {
+    if (open) setTxCurrency(defaultCurrency);
+  }, [open, defaultCurrency]);
 
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
@@ -186,6 +191,10 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setType('income');
     }
     setVoiceDetection(null);
+    // Scroll form into view after fields are set
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const cancelVoiceDetection = () => {
@@ -354,7 +363,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           {/* Type Toggle */}
           <div className="flex gap-2">
             <button
@@ -380,9 +389,9 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
           {/* Amount + Currency */}
           <div className="flex gap-2">
             <Input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*\.?[0-9]*"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
