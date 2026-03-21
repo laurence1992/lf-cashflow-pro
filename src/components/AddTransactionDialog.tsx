@@ -6,10 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useAddTransaction } from '@/hooks/useTransactions';
 import { useCategories, useAddCategory } from '@/hooks/useCategories';
-import { useProfile, Currency } from '@/hooks/useProfile';
+import { useProfile, Currency, currencySymbols } from '@/hooks/useProfile';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, Check, X } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -18,41 +18,47 @@ interface Props {
 
 const OTHER_SENTINEL = '__other__';
 
-// Map spoken currency words to codes
 const CURRENCY_WORDS: Record<string, Currency> = {
-  euro: 'EUR', euros: 'EUR', eur: 'EUR', '€': 'EUR',
-  dollar: 'USD', dollars: 'USD', usd: 'USD', '$': 'USD', buck: 'USD', bucks: 'USD',
-  yuan: 'CNY', cny: 'CNY', renminbi: 'CNY', rmb: 'CNY', '¥': 'CNY',
+  euro: 'EUR', euros: 'EUR', eur: 'EUR',
+  dollar: 'USD', dollars: 'USD', usd: 'USD', buck: 'USD', bucks: 'USD',
+  yuan: 'CNY', cny: 'CNY', renminbi: 'CNY', rmb: 'CNY',
 };
 
-// Map spoken category words to category names
-const CATEGORY_WORDS: Record<string, string> = {
-  food: 'Food', eat: 'Food', eating: 'Food', lunch: 'Food', dinner: 'Food', breakfast: 'Food', meal: 'Food',
-  groceries: 'Food', grocery: 'Food', coffee: 'Food', cafe: 'Food', restaurant: 'Food', snack: 'Food',
-  transport: 'Transport', taxi: 'Transport', uber: 'Transport', bus: 'Transport', train: 'Transport', gas: 'Transport', fuel: 'Transport', petrol: 'Transport',
-  shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping', amazon: 'Shopping',
-  entertainment: 'Entertainment', movie: 'Entertainment', movies: 'Entertainment', cinema: 'Entertainment', game: 'Entertainment', games: 'Entertainment',
-  health: 'Health', doctor: 'Health', medicine: 'Health', pharmacy: 'Health', hospital: 'Health',
-  bills: 'Bills', bill: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
+const CATEGORY_MAP: Record<string, string> = {
+  beer: 'Social', pint: 'Social', pub: 'Social', drinks: 'Social', drink: 'Social', bar: 'Social', wine: 'Social', cocktail: 'Social',
+  food: 'Food', lunch: 'Food', dinner: 'Food', breakfast: 'Food', restaurant: 'Food', takeaway: 'Food', meal: 'Food',
+  groceries: 'Food', grocery: 'Food', snack: 'Food', coffee: 'Food', cafe: 'Food',
+  taxi: 'Transport', uber: 'Transport', bus: 'Transport', train: 'Transport', metro: 'Transport', gas: 'Transport', fuel: 'Transport', petrol: 'Transport', transport: 'Transport', travel: 'Transport', flight: 'Transport',
+  gym: 'Fitness', fitness: 'Fitness', workout: 'Fitness', exercise: 'Fitness', sport: 'Fitness', sports: 'Fitness',
+  shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', clothing: 'Shopping', shoes: 'Shopping', amazon: 'Shopping',
+  bills: 'Bills', bill: 'Bills', rent: 'Bills', electricity: 'Bills', water: 'Bills', internet: 'Bills', phone: 'Bills',
+  movie: 'Entertainment', movies: 'Entertainment', cinema: 'Entertainment', netflix: 'Entertainment', entertainment: 'Entertainment', game: 'Entertainment', games: 'Entertainment', spotify: 'Entertainment',
   salary: 'Salary', pay: 'Salary', wage: 'Salary', income: 'Salary',
-  rent: 'Bills', housing: 'Bills',
   gift: 'Gift', gifts: 'Gift', present: 'Gift',
-  travel: 'Transport', flight: 'Transport', hotel: 'Transport',
-  beer: 'Social', drinks: 'Social', bar: 'Social', pub: 'Social', wine: 'Social', cocktail: 'Social',
-  gym: 'Fitness', workout: 'Fitness', exercise: 'Fitness', sport: 'Fitness', sports: 'Fitness',
-  subscription: 'Subscriptions', netflix: 'Subscriptions', spotify: 'Subscriptions',
+  subscription: 'Subscriptions',
 };
 
-function parseSpeech(text: string, categories: Array<{ id: string; name: string }> | undefined) {
+interface ParsedVoice {
+  amount: string | null;
+  currency: Currency;
+  categoryName: string;
+  categoryId: string | null;
+}
+
+function parseSpeech(
+  text: string,
+  categories: Array<{ id: string; name: string }> | undefined,
+  defaultCurrency: Currency
+): ParsedVoice {
   const lower = text.toLowerCase().trim();
   const words = lower.split(/\s+/);
 
-  // Extract amount (first number found)
+  // Extract amount
   const numMatch = lower.match(/(\d+(?:[.,]\d+)?)/);
   const amount = numMatch ? numMatch[1].replace(',', '.') : null;
 
   // Extract currency
-  let currency: Currency | null = null;
+  let currency: Currency = defaultCurrency;
   for (const word of words) {
     if (CURRENCY_WORDS[word]) {
       currency = CURRENCY_WORDS[word];
@@ -60,36 +66,30 @@ function parseSpeech(text: string, categories: Array<{ id: string; name: string 
     }
   }
 
-  // Extract category — first try matching against actual user categories
+  // Extract category via keyword mapping
+  let categoryName = 'Other';
+  for (const word of words) {
+    if (CATEGORY_MAP[word]) {
+      categoryName = CATEGORY_MAP[word];
+      break;
+    }
+  }
+
+  // Check for income keywords
+  if (words.some(w => ['salary', 'income', 'earned', 'wage', 'pay'].includes(w))) {
+    categoryName = 'Salary';
+  }
+
+  // Find matching category ID
   let categoryId: string | null = null;
-  let categoryName: string | null = null;
-
   if (categories) {
-    for (const cat of categories) {
-      if (lower.includes(cat.name.toLowerCase())) {
-        categoryId = cat.id;
-        categoryName = cat.name;
-        break;
-      }
+    const found = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+    if (found) {
+      categoryId = found.id;
     }
   }
 
-  // Fallback to keyword mapping
-  if (!categoryId && categories) {
-    for (const word of words) {
-      const mapped = CATEGORY_WORDS[word];
-      if (mapped) {
-        const found = categories.find((c) => c.name.toLowerCase() === mapped.toLowerCase());
-        if (found) {
-          categoryId = found.id;
-          categoryName = found.name;
-          break;
-        }
-      }
-    }
-  }
-
-  return { amount, currency, categoryId, categoryName };
+  return { amount, currency, categoryName, categoryId };
 }
 
 const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
@@ -109,8 +109,8 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
 
   // Voice state
   const [isListening, setIsListening] = useState(false);
-  const [speechText, setSpeechText] = useState<string | null>(null);
   const [speechError, setSpeechError] = useState<string | null>(null);
+  const [voiceDetection, setVoiceDetection] = useState<ParsedVoice & { rawText: string } | null>(null);
 
   const { data: categories } = useCategories();
   const addTransaction = useAddTransaction();
@@ -125,6 +125,28 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
       setNewCategoryName('');
       setCategoryId(value);
     }
+  };
+
+  const confirmVoiceDetection = () => {
+    if (!voiceDetection) return;
+    if (voiceDetection.amount) setAmount(voiceDetection.amount);
+    setTxCurrency(voiceDetection.currency);
+    if (voiceDetection.categoryId) {
+      setCategoryId(voiceDetection.categoryId);
+      setIsCreatingCategory(false);
+      setNewCategoryName('');
+    }
+    setNote(voiceDetection.rawText);
+    // Check for income
+    const lower = voiceDetection.rawText.toLowerCase();
+    if (['salary', 'income', 'earned', 'wage'].some(w => lower.includes(w))) {
+      setType('income');
+    }
+    setVoiceDetection(null);
+  };
+
+  const cancelVoiceDetection = () => {
+    setVoiceDetection(null);
   };
 
   const handleVoiceInput = useCallback(() => {
@@ -142,13 +164,12 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     recognition.lang = 'en-US';
 
     setIsListening(true);
-    setSpeechText(null);
     setSpeechError(null);
+    setVoiceDetection(null);
 
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       const confidence = event.results[0][0].confidence;
-      setSpeechText(transcript);
 
       if (confidence < 0.4) {
         setSpeechError("Didn't catch that, try again");
@@ -156,35 +177,13 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
         return;
       }
 
-      // Parse and fill form
-      const parsed = parseSpeech(transcript, categories);
-
-      if (parsed.amount) setAmount(parsed.amount);
-      if (parsed.currency) setTxCurrency(parsed.currency);
-      if (parsed.categoryId) {
-        setCategoryId(parsed.categoryId);
-        setIsCreatingCategory(false);
-        setNewCategoryName('');
-      }
-
-      // Fill note with raw spoken text
-      setNote(transcript);
-
-      // Check for income keywords
-      const lower = transcript.toLowerCase();
-      if (lower.includes('salary') || lower.includes('income') || lower.includes('pay') || lower.includes('earned')) {
-        setType('income');
-      }
-
+      const parsed = parseSpeech(transcript, categories, defaultCurrency);
+      setVoiceDetection({ ...parsed, rawText: transcript });
       setIsListening(false);
     };
 
-    recognition.onerror = (event: any) => {
-      if (event.error === 'no-speech') {
-        setSpeechError("Didn't catch that, try again");
-      } else {
-        setSpeechError("Didn't catch that, try again");
-      }
+    recognition.onerror = () => {
+      setSpeechError("Didn't catch that, try again");
       setIsListening(false);
     };
 
@@ -193,7 +192,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     };
 
     recognition.start();
-  }, [isListening, categories]);
+  }, [isListening, categories, defaultCurrency]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,8 +239,8 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
     setTxCurrency(defaultCurrency);
     setIsCreatingCategory(false);
     setNewCategoryName('');
-    setSpeechText(null);
     setSpeechError(null);
+    setVoiceDetection(null);
   };
 
   return (
@@ -251,7 +250,7 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
           <DialogTitle className="text-foreground">New Transaction</DialogTitle>
         </DialogHeader>
 
-        {/* Voice Input Button */}
+        {/* Voice Input */}
         <div className="flex flex-col items-center gap-2">
           <button
             type="button"
@@ -269,16 +268,42 @@ const AddTransactionDialog = ({ open, onOpenChange }: Props) => {
             )}
           </button>
           <p className="text-[11px] text-muted-foreground">
-            {isListening ? 'Listening...' : 'Tap to speak — e.g. "50 euro on food"'}
+            {isListening ? 'Listening...' : 'Tap to speak — e.g. "5 euro on beer"'}
           </p>
 
-          {/* Speech result */}
-          {speechText && !speechError && (
-            <div className="w-full rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-center">
-              <p className="text-xs text-muted-foreground mb-0.5">Heard:</p>
-              <p className="text-sm font-medium text-foreground">"{speechText}"</p>
+          {/* Voice detection confirmation */}
+          {voiceDetection && (
+            <div className="w-full rounded-lg border border-primary/40 bg-primary/10 p-3 space-y-2">
+              <p className="text-xs text-muted-foreground text-center">Detected:</p>
+              <p className="text-lg font-bold text-center text-foreground font-mono-finance">
+                {currencySymbols[voiceDetection.currency]}
+                {voiceDetection.amount || '?'} — {voiceDetection.categoryName}
+              </p>
+              <p className="text-[11px] text-muted-foreground text-center italic">
+                "{voiceDetection.rawText}"
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={confirmVoiceDetection}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-gold-glow"
+                  size="sm"
+                >
+                  <Check size={16} className="mr-1" /> Confirm
+                </Button>
+                <Button
+                  type="button"
+                  onClick={cancelVoiceDetection}
+                  variant="outline"
+                  className="flex-1 border-border text-muted-foreground"
+                  size="sm"
+                >
+                  <X size={16} className="mr-1" /> Cancel
+                </Button>
+              </div>
             </div>
           )}
+
           {speechError && (
             <div className="w-full rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-center">
               <p className="text-sm text-destructive">{speechError}</p>
