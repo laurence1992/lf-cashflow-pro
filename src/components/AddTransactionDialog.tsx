@@ -66,12 +66,26 @@ function parseSpeech(
     }
   }
 
-  // Extract category via keyword mapping
+  // Extract category — first try hardcoded map
   let categoryName = 'Other';
+  let matched = false;
   for (const word of words) {
     if (CATEGORY_MAP[word]) {
       categoryName = CATEGORY_MAP[word];
+      matched = true;
       break;
+    }
+  }
+
+  // If no hardcoded match, check user's custom categories
+  if (!matched && categories) {
+    for (const cat of categories) {
+      const catLower = cat.name.toLowerCase();
+      if (words.includes(catLower) || lower.includes(catLower)) {
+        categoryName = cat.name;
+        matched = true;
+        break;
+      }
     }
   }
 
@@ -88,6 +102,8 @@ function parseSpeech(
       categoryId = found.id;
     }
   }
+
+  console.log('[VoiceParse]', { amount, currency, categoryName, categoryId, rawText: text });
 
   return { amount, currency, categoryName, categoryId };
 }
