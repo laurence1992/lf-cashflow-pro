@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Home, CalendarDays, Target, Settings, Plus, LogOut, ArrowLeftRight, LineChart } from 'lucide-react';
 import { useState } from 'react';
 import AddTransactionDialog from './AddTransactionDialog';
+import PuntLogo from './PuntLogo';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
