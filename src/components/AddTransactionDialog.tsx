@@ -45,12 +45,28 @@ interface ParsedVoice {
   categoryId: string | null;
 }
 
+const WORD_TO_NUM: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
+  seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000,
+};
+
+function wordsToNumbers(text: string): string {
+  let result = text;
+  for (const [word, num] of Object.entries(WORD_TO_NUM)) {
+    result = result.replace(new RegExp(`\\b${word}\\b`, 'gi'), String(num));
+  }
+  return result;
+}
+
 function parseSpeech(
   text: string,
   categories: Array<{ id: string; name: string }> | undefined,
   defaultCurrency: Currency
 ): ParsedVoice {
-  const lower = text.toLowerCase().trim();
+  const lower = wordsToNumbers(text.toLowerCase().trim());
+  const origWords = text.toLowerCase().trim().split(/\s+/);
   const words = lower.split(/\s+/);
 
   // Extract amount
@@ -69,7 +85,7 @@ function parseSpeech(
   // Extract category — first try hardcoded map
   let categoryName = 'Other';
   let matched = false;
-  for (const word of words) {
+  for (const word of origWords) {
     if (CATEGORY_MAP[word]) {
       categoryName = CATEGORY_MAP[word];
       matched = true;
@@ -79,9 +95,10 @@ function parseSpeech(
 
   // If no hardcoded match, check user's custom categories
   if (!matched && categories) {
+    const origLower = text.toLowerCase().trim();
     for (const cat of categories) {
       const catLower = cat.name.toLowerCase();
-      if (words.includes(catLower) || lower.includes(catLower)) {
+      if (origWords.includes(catLower) || origLower.includes(catLower)) {
         categoryName = cat.name;
         matched = true;
         break;
@@ -90,7 +107,7 @@ function parseSpeech(
   }
 
   // Check for income keywords
-  if (words.some(w => ['salary', 'income', 'earned', 'wage', 'pay'].includes(w))) {
+  if (origWords.some(w => ['salary', 'income', 'earned', 'wage', 'pay'].includes(w))) {
     categoryName = 'Salary';
   }
 
